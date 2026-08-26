@@ -1,0 +1,7 @@
+#+title: CFD
+
+Research and learning in computational fluid dynamics.
+
+* Areas
+
+- [[file:journal-bearings/README.org][Journal bearings]]
