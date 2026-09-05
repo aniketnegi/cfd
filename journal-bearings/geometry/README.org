@@ -1,5 +1,5 @@
 #+title: Eccentric cylindrical journal-bearing geometry
-#+startup: content
+#+startup: content latexpreview
 #+options: toc:2 num:nil ^:nil
 
 Finite-length eccentric annular domain for the lubricant film of a cylindrical
@@ -19,7 +19,7 @@ and displaced by $e$ along $+X$. Both cylinders span $0 \le z \le L$.
 
 $$R_h = R_j + c$$
 
-$$e = \epsilon c$$
+$$e = \epsilon \cdot c$$
 
 $$H = \{(x,y,z) \mid x^2 + y^2 \le R_h^2,\ 0 \le z \le L\}$$
 
