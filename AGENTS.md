@@ -7,3 +7,9 @@
 - Before handoff, follow **Review a change** and report only checks run.
 - Work one reviewed checkpoint at a time. Do not create future scaffolding.
 - Preserve unrelated user changes and ignored task state.
+- Write commit messages according to
+  [A Note About Git Commit Messages](https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html)
+  and [How to Write a Git Commit Message](https://cbea.ms/git-commit/): use a
+  capitalized imperative subject of about 50 characters without a final period;
+  separate an optional body with a blank line, wrap it near 72 characters, and
+  explain what changed and why.
