@@ -1,3 +1,31 @@
-#+title: Journal Bearings
+#+title: Journal bearings
+#+startup: content
+#+options: toc:2 num:nil
 
-Starting area for journal-bearing geometry, meshing, and flow studies.
+Hydrodynamic lubrication models for cylindrical and conical journal bearings.
+Journal rotation drives lubricant through a clearance that narrows and widens
+around the circumference, producing pressure that can support a load.
+
+This project builds numerical models of that film, beginning with geometry and
+meshing before moving to reduced lubrication models and full three-dimensional
+CFD. Cylindrical bearings provide the first case; conical bearings extend the
+same problem by varying journal and housing radii along the axis.
+
+* Approach
+
+I use Julia for geometry, meshing, and reduced numerical models. Gmsh handles
+CAD and mesh generation. OpenFOAM handles full three-dimensional flow models.
+
+The main questions are how clearance, eccentricity, speed, load, lubricant, and
+bearing shape affect pressure, load capacity, cavitation, heat transfer, and
+stability. Reduced and three-dimensional models use common geometry and
+operating conditions so their predictions can be compared with each other and
+with published experimental and numerical results.
+
+* Cylindrical geometry
+
+The first implementation constructs the lubricant volume between an eccentric
+cylindrical journal and its housing.
+
+- [[file:geometry/README.org][Eccentric cylindrical journal-bearing geometry]]
+- [[file:geometry/cylindrical.jl][Julia implementation]]

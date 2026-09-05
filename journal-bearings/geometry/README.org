@@ -1,0 +1,91 @@
+#+title: Eccentric cylindrical journal-bearing geometry
+#+startup: content
+#+options: toc:2 num:nil ^:nil
+
+Finite-length eccentric annular domain for the lubricant film of a cylindrical
+journal bearing. All dimensions use millimeters.
+
+* Domain definition
+
+The housing axis coincides with global $Z$. The journal axis is parallel to $Z$
+and displaced by $e$ along $+X$. Both cylinders span $0 \le z \le L$.
+
+| Symbol    | Julia field          | Definition               |
+|-----------+----------------------+--------------------------|
+| $R_j$     | =journal_radius=     | Journal radius           |
+| $c$       | =radial_clearance=   | Nominal radial clearance |
+| $L$       | =length=             | Axial length             |
+| $\epsilon$ | =eccentricity_ratio= | Eccentricity ratio       |
+
+$$R_h = R_j + c$$
+
+$$e = \epsilon c$$
+
+$$H = \{(x,y,z) \mid x^2 + y^2 \le R_h^2,\ 0 \le z \le L\}$$
+
+$$J = \{(x,y,z) \mid (x-e)^2 + y^2 \le R_j^2,\ 0 \le z \le L\}$$
+
+$$\Omega_f = H \setminus J$$
+
+Admissible parameters are finite and satisfy:
+
+$$R_j > 0,\quad c > 0,\quad L > 0,\quad 0 \le \epsilon < 1$$
+
+$\Omega_f$ has one volume bounded by journal wall, housing wall, and two axial
+end faces.
+
+* Geometric invariants
+
+$$h_{\min} = c - e = c(1 - \epsilon)$$
+
+$$h_{\max} = c + e = c(1 + \epsilon)$$
+
+$$V_f = \pi(R_h^2 - R_j^2)L$$
+
+$h_{\min}$ lies on $+X$; $h_{\max}$ lies on $-X$. Volume is independent of
+eccentricity while $\epsilon < 1$.
+
+* Reference case
+
+#+begin_example
+R_j       = 50.00 mm
+c         = 0.05 mm
+R_h       = 50.05 mm
+L         = 60.00 mm
+epsilon   = 0.6
+e         = 0.03 mm
+h_min     = 0.02 mm
+h_max     = 0.08 mm
+V_f       = 942.9490349749009 mm^3
+#+end_example
+
+* Gmsh implementation
+
+[[file:cylindrical.jl][cylindrical.jl]] creates $H$ and $J$ with
+=gmsh.model.occ.addCylinder= and computes $\Omega_f$ with
+=gmsh.model.occ.cut=. After synchronization, it applies these acceptance
+checks:
+
+| Property     | Criterion                                      |
+|--------------+------------------------------------------------|
+| Topology     | One entity of dimension three                  |
+| Volume       | Analytic value, relative tolerance =1e-9=      |
+| Bounds       | $(-R_h, -R_h, 0, R_h, R_h, L)$, absolute tolerance =2e-7 mm= |
+| BREP export  | Output exists and is nonempty                  |
+
+The bounds tolerance accounts for OpenCASCADE bounding-box padding. BREP export
+preserves the analytic cylindrical surfaces; meshing remains a separate
+operation.
+
+Run from =journal-bearings/=:
+
+#+begin_src sh
+julia --project=. geometry/cylindrical.jl
+#+end_src
+
+Output: =out/bearing.brep=.
+
+* References
+
+- [[https://gmsh.info/doc/texinfo/gmsh.html#Gmsh-application-programming-interface][Gmsh application programming interface]]
+- [[https://gmsh.info/doc/texinfo/gmsh.html#t16][OpenCASCADE geometry operations in Gmsh]]

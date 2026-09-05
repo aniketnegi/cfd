@@ -1,1 +1,4 @@
 /.tasks/
+/journal-bearings/.direnv/
+/journal-bearings/.venv/
+/journal-bearings/out/

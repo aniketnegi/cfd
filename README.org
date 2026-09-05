@@ -2,6 +2,6 @@
 
 Research and learning in computational fluid dynamics.
 
-* Areas
+* Projects
 
 - [[file:journal-bearings/README.org][Journal bearings]]
