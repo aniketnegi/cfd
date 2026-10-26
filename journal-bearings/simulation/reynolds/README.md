@@ -49,7 +49,7 @@ From `journal-bearings/`, verify the solver and the named-case interface:
 ```sh
 julia --project=. --check-bounds=yes simulation/reynolds/checks.jl
 julia --project=. --check-bounds=yes simulation/reynolds/run_checks.jl
-julia --project=. --check-bounds=yes mesh/2d/conical/generate_checks.jl
+julia --project=. --check-bounds=yes test/mesh_cli.jl
 ```
 
 See [`README.org`](../../README.org) for mesh and run CLI examples. The

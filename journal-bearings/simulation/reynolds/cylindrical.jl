@@ -5,7 +5,9 @@
 # https://rotorlab.tamu.edu/me626/Notes_pdf/Notes04%20Static%20Load%20JBs%2010.pdf
 # SI units internally; bearing.jl and housing_grid use mm.
 using LinearAlgebra, SparseArrays
-include(joinpath(@__DIR__, "..", "..", "mesh", "2d", "conical", "grid.jl"))
+include(joinpath(@__DIR__, "../../bearing.jl"))
+include(joinpath(@__DIR__, "../../mesh/2d/conical/grid.jl"))
+include(joinpath(@__DIR__, "../../mesh/vtk.jl"))
 
 # Output locations for the illustrative main() run only. The solver function
 # below is reusable and does not write files or impose these operating values.

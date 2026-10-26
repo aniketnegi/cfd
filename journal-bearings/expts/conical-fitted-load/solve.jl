@@ -2,6 +2,7 @@
 # No rectangular operator, feed mask, or fitted-cell reshaping is used here.
 include(joinpath(@__DIR__,"../conical-fitted-inlet/run.jl"))
 module PublicGeometry
+include(joinpath(@__DIR__,"../../bearing.jl"))
 include(joinpath(@__DIR__,"../../mesh/2d/conical/surface_feed.jl"))
 end
 

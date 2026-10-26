@@ -6,5 +6,6 @@ Keep task states here and details in the linked task files. Record scope,
 completion checks, decisions and verification before marking a task done.
 Generated meshes, plots and logs stay outside Git. Times are Asia/Kolkata.
 
-* ACTIVE Separate meshing from export and fluid tests
+* DONE Separate meshing from export and fluid tests
+CLOSED: [2026-10-26 Mon 19:17]
 [[file:meshing.org][Scope, work record and checks]]

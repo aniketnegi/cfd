@@ -1,5 +1,8 @@
 # Command-line entry point for the conical housing surface grids (lengths in mm).
+include(joinpath(@__DIR__, "../../../bearing.jl"))
+include(joinpath(@__DIR__, "grid.jl"))
 include(joinpath(@__DIR__, "surface_feed.jl"))
+include(joinpath(@__DIR__, "../../vtk.jl"))
 include(joinpath(@__DIR__, "..", "..", "..", "experiment.jl"))
 
 const USAGE = """NAME

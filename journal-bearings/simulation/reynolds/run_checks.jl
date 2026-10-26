@@ -9,7 +9,7 @@ function make_case(root, name; angle=0.0, fed=false, ntheta=16, nz=8)
     mkdir(dir)
     grid = housing_grid(p, ntheta, nz)
     # The rejection test needs a valid manifest and mesh checksum; feed
-    # footprint geometry itself is exercised by mesh/2d/conical/checks.jl.
+    # footprint geometry itself is exercised by test/meshing.jl.
     write_vtk(joinpath(dir, "mesh.vtk"), grid;
               feed_cells=fed ? falses(length(grid.quads)) : nothing)
     save_experiment_manifest(dir, name, fed ? "surface-feed" : "unported", p, ntheta, nz;

@@ -1,6 +1,6 @@
 # Shared, versioned experiment geometry manifest. The manifest is the source
 # of truth for the mesh and bearing geometry; output VTK is not parsed for
-# simulation inputs. Caller includes bearing.jl (via grid.jl) first.
+# simulation inputs. Caller loads bearing.jl before these manifest helpers.
 using TOML, SHA
 
 const DEFAULT_CASES_ROOT = joinpath(@__DIR__, "out", "cases")

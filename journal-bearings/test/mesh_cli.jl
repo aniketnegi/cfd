@@ -1,11 +1,13 @@
 using Test
-include(joinpath(@__DIR__, "generate.jl"))
+include(joinpath(@__DIR__, "../mesh/2d/conical/generate.jl"))
 
 const BASE_ARGS = ["--geometry", "unported", "--journal-radius-mm", "50",
                    "--length-mm", "100", "--clearance-mm", "0.05",
                    "--cone-angle-deg", "10", "--eccentricity-ratio", "0.6"]
 
 @testset "2D mesh CLI" begin
+    @test !isdefined(@__MODULE__, :solve_conical_jfo)
+    @test all(id.name != "Gmsh" for id in keys(Base.loaded_modules))
     @test occursin("NAME\n", USAGE)
     @test occursin("SYNOPSIS\n", USAGE)
     @test occursin("-h, --help", USAGE)

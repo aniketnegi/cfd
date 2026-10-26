@@ -1,6 +1,8 @@
 # One fixed-budget diameter-relative recipe. No per-diameter parameter search.
 using Test,TOML,SHA,Printf
+include(joinpath(@__DIR__,"../../bearing.jl"))
 include(joinpath(@__DIR__,"../../mesh/2d/conical/surface_feed.jl"))
+include(joinpath(@__DIR__,"../../mesh/vtk.jl"))
 module FieldReference
 include(joinpath(@__DIR__,"../conical-fitted-inlet/checks.jl"))
 end

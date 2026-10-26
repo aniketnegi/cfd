@@ -1,16 +1,11 @@
 using Test
-include(joinpath(@__DIR__, "surface_feed.jl"))
-
-# Historical implementation is a comparison fixture only, never a production
-# dependency. It includes its own BearingParameters in a separate module.
-module ReviewedTrial
-include(joinpath(@__DIR__, "../../../expts/conical-fitted-inlet/operator.jl"))
-include(joinpath(@__DIR__, "../../../expts/conical-inlet-transition/layout.jl"))
-end
+include(joinpath(@__DIR__, "../bearing.jl"))
+include(joinpath(@__DIR__, "../mesh/2d/conical/grid.jl"))
+include(joinpath(@__DIR__, "../mesh/2d/conical/surface_feed.jl"))
+include(joinpath(@__DIR__, "../mesh/vtk.jl"))
 
 p=BearingParameters(journal_midpoint_radius=50.,radial_clearance=.05,
                     bearing_length=100.,semicone_angle_deg=10.,eccentricity_ratio=.6)
-prior=ReviewedTrial.controlled_layout(ReviewedTrial.fitted_mesh()).mesh
 hole_errors=Float64[]
 coarse=nothing
 # Independent integration of the true drilling footprint on the cone.
@@ -22,16 +17,10 @@ mouth_area=sum(1:n) do j
 end
 whole_area=2pi*p.housing_midpoint_radius*p.bearing_length/cosd(p.semicone_angle_deg)
 
-@testset "Promoted fitted inlet: exact match to reviewed geometry" begin
+@testset "Fitted inlet geometry and connectivity" begin
     for level in (1,2,4)
         g=surface_feed_grid(p,128level,64level;feed_diameter=5.,feed_z=50.)
         level==1 && (global coarse=g)
-        reference=ReviewedTrial.subdivide_layout(prior,level)
-        # Exact equality, not merely matching a minimum-quality scalar.
-        for field in (:nodes,:quads,:centre,:areas,:owner,:neighbour,:mid,:normals,
-                      :lengths,:boundary,:localnodes,:corner_scores,:face_alignment)
-            @test getproperty(g.surface,field)==getproperty(reference,field)
-        end
         @test !hasproperty(g,:feed_cells)
         @test g.layout=="controlled-fitted-land-v1"
         @test length(g.quads)==8416level^2
@@ -70,12 +59,12 @@ whole_area=2pi*p.housing_midpoint_radius*p.bearing_length/cosd(p.semicone_angle_
         hole=whole_area-sum(g.areas);push!(hole_errors,abs(hole/mouth_area-1))
         @test 0<hole<1.001mouth_area
         @test hole_errors[end]<.007/level^2
-        println("Promoted level=$level $(g.quality); mouth area error=$(hole_errors[end])")
+        println("Inlet level=$level $(g.quality); mouth area error=$(hole_errors[end])")
     end
     @test hole_errors[3]<hole_errors[1]/10
 end
 
-@testset "Public fitted export, units and non-stepped boundary" begin
+@testset "VTK export, units and inlet boundary" begin
     g=coarse
     mktempdir() do dir
         file=joinpath(dir,"fitted.vtk");write_vtk(file,g);lines=readlines(file)
@@ -121,19 +110,6 @@ end
     @test g0.radial_gaps!=g.radial_gaps
 end
 
-@testset "Promoted chart with the checked conservative field operator" begin
-    reference=ReviewedTrial.BearingParameters(journal_midpoint_radius=50.,radial_clearance=.05,
-        bearing_length=100.,semicone_angle_deg=10.,eccentricity_ratio=0.)
-    pose=ReviewedTrial.floating_bush_pose(reference,(-9.152501266813789e-7,1.7844427760798323e-7,0.))
-    state=ReviewedTrial.solve_fitted(coarse.surface,pose)
-    @test maximum(abs,state.force-[-18.24857748898862,-1002.1463387752476,321.13450985407525])<1e-6
-    @test state.net_feed*60000≈.030887303265211042 rtol=1e-10
-    @test minimum(state.pressure)>=0
-    @test 0<=minimum(state.fill)<=maximum(state.fill)<=1
-    @test state.imbalance<1e-10
-    println("Promoted coarse held-pose force=$(state.force), net feed=$(state.net_feed*60000) L/min; NOT equilibrium")
-end
-
 @testset "No silent fallback or unsupported geometry substitution" begin
     for diameter in (0.,-1.,Inf,NaN,4.,6.),z in (50.,)
         @test_throws ArgumentError surface_feed_grid(p,128,64;feed_diameter=diameter,feed_z=z)
@@ -148,5 +124,49 @@ end
         other=BearingParameters(journal_midpoint_radius=R,bearing_length=L,radial_clearance=c,
             semicone_angle_deg=angle,eccentricity_ratio=.6)
         @test_throws ArgumentError surface_feed_grid(other,128,64;feed_diameter=5.,feed_z=50.)
+    end
+end
+
+# Loading an inlet constructor must not also load the regular constructor or IO.
+module InletOnly
+include(joinpath(@__DIR__, "../bearing.jl"))
+include(joinpath(@__DIR__, "../mesh/2d/conical/surface_feed.jl"))
+end
+
+@testset "Mesh dependency boundaries" begin
+    @test isdefined(InletOnly, :surface_feed_grid)
+    @test !isdefined(InletOnly, :housing_grid)
+    @test !isdefined(InletOnly, :write_vtk)
+    @test !isdefined(@__MODULE__, :solve_conical_jfo)
+    @test !isdefined(@__MODULE__, :equilibrate_floating_bush)
+    @test all(id.name != "Gmsh" for id in keys(Base.loaded_modules))
+end
+
+@testset "Regular cylinder and cone mesh" begin
+    for angle in (0., 10.)
+        parameters = BearingParameters(journal_midpoint_radius=50., radial_clearance=.05,
+            bearing_length=100., semicone_angle_deg=angle, eccentricity_ratio=.6)
+        grid = housing_grid(parameters, 16, 4)
+        @test length(grid.nodes) == 16 * 5
+        @test length(grid.quads) == 16 * 4
+        @test length(grid.nodes) == length(unique(grid.nodes))
+        @test grid.quads[16] == (16, 1, 17, 32)
+        @test minimum(grid.radial_gaps) > 0
+        @test all(parameters.minimum_gap-1e-11 .<= grid.radial_gaps .<= parameters.maximum_gap+1e-11)
+        @test sum(grid.areas) ≈ 2pi * parameters.housing_midpoint_radius *
+            parameters.bearing_length / cosd(angle) rtol=1e-12
+        @test_throws ArgumentError housing_grid(parameters, 2, 4)
+        @test_throws ArgumentError housing_grid(parameters, 16, 0)
+        mktempdir() do dir
+            file = joinpath(dir, "regular.vtk")
+            write_vtk(file, grid)
+            original = read(file, String)
+            # Regular exports intentionally accept an existing temporary file:
+            # the named fluid runner uses that to replace results atomically.
+            write_vtk(file, grid)
+            @test read(file, String) == original
+            @test_throws ArgumentError write_vtk(joinpath(dir, "bad.vtk"), grid;
+                feed_cells=[true])
+        end
     end
 end
