@@ -1,0 +1,43 @@
+#+TITLE: Meshing dependency cleanup
+
+[[file:INDEX.org][Task index]]
+
+* Scope
+The user approved the first two meshing-refactor steps on 2026-10-26:
+1. Establish a before/after baseline for all three fitted resolutions.
+2. Separate mesh construction, VTK export, examples and mesh-only tests.
+
+Keep the existing construction, optimization, units, supported inputs and
+export behaviour unchanged. Do not generalize the cone/inlet, replace the
+optimizer, change fluid mathematics or remove validation in this task.
+
+* Completion checks
+- Mesh data and VTK output agree exactly before/after at all three fitted
+  resolutions; include regular cone/cylinder meshes in the comparison.
+- Basic mesh tests do not load experimental meshers, Gmsh or fluid solvers.
+- Historical geometry comparison and fluid integration checks remain runnable
+  separately; do not discard their assertions.
+- Existing mesh CLI and named fluid runner retain validation and overwrite
+  behaviour. Relevant numerical suites still pass.
+- Commit source checkpoints locally; do not stage generated evidence or caches.
+
+* Work record
+- 2026-10-26 19:02: started. Existing branch master is one commit ahead of
+  origin/master; no staged changes. The mesher and its tests currently depend
+  on untracked source. Preserve that source before changing the layout.
+- Baseline against 30dada3: the inlet now follows the drilling rim, but the
+  public constructor still supports only the fixed 5 mm / 10-degree case.
+  housing_grid is unchanged; grid.jl also contains the shared VTK writer.
+
+* Verification
+Before refactor (Julia 1.13.2; Julia/OpenBLAS/OpenMP thread counts set to 1):
+- Existing mesh suite: 150 assertions pass.
+- Existing generator/manifest suite: 42 assertions pass.
+- Named cylindrical runner: 22 assertions pass.
+- Recorded every mesh field and exact VTK-byte hashes for three fitted meshes
+  and regular cylinders/cones at all three resolutions (nine meshes total).
+- The new snapshot script initially had a Julia macro parsing error; fixed
+  its executable-entry guard, then successfully recorded the baseline.
+
+Generated comparisons/logs: out/reviews/meshing-dependency-cleanup/ (ignored).
+After-refactor checks pending.

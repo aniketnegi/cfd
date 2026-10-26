@@ -1,5 +1,6 @@
 # Command-line entry point for the conical housing surface grids (lengths in mm).
 include(joinpath(@__DIR__, "surface_feed.jl"))
+include(joinpath(@__DIR__, "..", "..", "..", "experiment.jl"))
 
 const USAGE = """NAME
     generate.jl - generate a conical housing surface grid
@@ -9,9 +10,15 @@ SYNOPSIS
 
 DESCRIPTION
     Write a periodic Quad4 housing surface as VTK. All lengths are in mm.
-    The feed variant labels cells; it does not cut a hole, prescribe supply
-    pressure, or solve for fluid pressure. The output must not already exist.
-    Options accept either --name VALUE or --name=VALUE.
+    The feed variant fits the circular-drill rim with controlled quad blocks;
+    it exports land cells plus boundary lines, not a stepped cell mask or 3D
+    passage. It prescribes no supply pressure and solves no fluid equation.
+    Fitted inlet support: Rj=50, L=100, c=0.05 mm, angle=10 degrees, diameter=5 mm,
+    z=50 mm; background pairs 128x64, 256x128 or 512x256. Other fitted layouts
+    are rejected, never silently replaced by the old mask. With --experiment NAME, create
+    out/cases/NAME/{mesh.vtk,experiment.toml}; the name must be new.
+    Alternatively, --output FILE preserves the standalone VTK mode
+    (without a reusable manifest). Options accept --key VALUE or --key=VALUE.
 
 REQUIRED OPTIONS
     --geometry=GEOMETRY        unported or surface-feed
@@ -20,11 +27,13 @@ REQUIRED OPTIONS
     --clearance-mm=MM          radial clearance
     --cone-angle-deg=DEG       cone semi-angle; 0 gives a cylinder
     --eccentricity-ratio=RATIO journal offset divided by radial clearance
-    --output=FILE             new .vtk output path
+    --experiment=NAME         new case name; exclusive with --output
+    --output=FILE             standalone .vtk path; exclusive with --experiment
 
 OPTIONS
-    --n-theta=N               circumferential cells (default: 512)
-    --n-axial=N               axial cells (default: 256)
+    --n-theta=N               background circumferential count (default: 512)
+    --n-axial=N               background axial count (default: 256)
+                               fitted land cells are not an N_theta x N_axial array
     --feed-diameter-mm=MM      required for surface-feed only
     --feed-z-mm=MM             feed centre from the large axial end;
                                required for surface-feed only
@@ -37,13 +46,12 @@ EXIT STATUS
 
 const OPTIONS = Set(("--geometry", "--journal-radius-mm", "--length-mm",
                      "--clearance-mm", "--cone-angle-deg", "--eccentricity-ratio",
-                     "--output", "--n-theta", "--n-axial",
+                     "--experiment", "--output", "--n-theta", "--n-axial",
                      "--feed-diameter-mm", "--feed-z-mm"))
 const REQUIRED = ("--geometry", "--journal-radius-mm", "--length-mm",
-                  "--clearance-mm", "--cone-angle-deg", "--eccentricity-ratio",
-                  "--output")
+                  "--clearance-mm", "--cone-angle-deg", "--eccentricity-ratio")
 
-function parse_grid_args(args)
+function parse_grid_args(args; cases_root=DEFAULT_CASES_ROOT)
     opts = Dict{String,String}()
     i = 1
     while i <= length(args)
@@ -88,9 +96,15 @@ function parse_grid_args(args)
         throw(ArgumentError("feed options are only valid with surface-feed"))
     end
 
-    path = opts["--output"]
-    endswith(lowercase(path), ".vtk") || throw(ArgumentError("--output must end in .vtk"))
-    ispath(path) && throw(ArgumentError("output already exists: $path"))
+    haskey(opts, "--output") != haskey(opts, "--experiment") ||
+        throw(ArgumentError("specify exactly one of --experiment or --output"))
+    experiment = get(opts, "--experiment", nothing)
+    dir = isnothing(experiment) ? nothing : case_directory(experiment; cases_root)
+    path = isnothing(experiment) ? opts["--output"] : joinpath(dir, "mesh.vtk")
+    isnothing(experiment) && !endswith(lowercase(path), ".vtk") &&
+        throw(ArgumentError("--output must end in .vtk"))
+    existing = isnothing(dir) ? path : dir
+    ispath(existing) && throw(ArgumentError("output already exists: $existing"))
     p = BearingParameters(
         journal_midpoint_radius=number("--journal-radius-mm"),
         bearing_length=number("--length-mm"),
@@ -104,23 +118,35 @@ function parse_grid_args(args)
     n_axial >= 1 || throw(ArgumentError("--n-axial must be positive"))
     feed_diameter = geometry == "surface-feed" ? number("--feed-diameter-mm") : nothing
     feed_z = geometry == "surface-feed" ? number("--feed-z-mm") : nothing
-    return (; geometry, p, n_theta, n_axial, feed_diameter, feed_z, path)
+    return (; geometry, p, n_theta, n_axial, feed_diameter, feed_z, path, experiment, dir)
 end
 
-function main(args=ARGS)
+function main(args=ARGS; cases_root=DEFAULT_CASES_ROOT)
     if "--help" in args || "-h" in args
         print(USAGE)
         return
     end
-    cfg = parse_grid_args(args)
-    if cfg.geometry == "surface-feed"
-        grid = surface_feed_grid(cfg.p, cfg.n_theta, cfg.n_axial;
-                                 feed_diameter=cfg.feed_diameter, feed_z=cfg.feed_z)
-        write_vtk(cfg.path, grid; feed_cells=grid.feed_cells)
-        println("Feed cells: $(count(grid.feed_cells)); selected area: $(sum(grid.areas[grid.feed_cells])) mm²")
+    cfg = parse_grid_args(args; cases_root)
+    grid = if cfg.geometry == "surface-feed"
+        surface_feed_grid(cfg.p, cfg.n_theta, cfg.n_axial;
+                          feed_diameter=cfg.feed_diameter, feed_z=cfg.feed_z)
     else
-        grid = housing_grid(cfg.p, cfg.n_theta, cfg.n_axial)
-        write_vtk(cfg.path, grid)
+        housing_grid(cfg.p, cfg.n_theta, cfg.n_axial)
+    end
+    if !isnothing(cfg.dir)
+        mkpath(dirname(cfg.dir))
+        mkdir(cfg.dir)  # exclusive; never overwrite a case
+    end
+    write_vtk(cfg.path, grid)
+    if !isnothing(cfg.experiment)
+        save_experiment_manifest(cfg.dir, cfg.experiment, cfg.geometry, cfg.p,
+                                 cfg.n_theta, cfg.n_axial;
+                                 feed_diameter=cfg.feed_diameter, feed_z=cfg.feed_z, mesh_grid=grid)
+        println("Saved experiment: $(abspath(joinpath(cfg.dir, "experiment.toml")))")
+    end
+    if cfg.geometry == "surface-feed"
+        println("Fitted inlet rim: $(length(grid.feed_edges)) edges; reservoir interior omitted")
+        println("Surface quality (NOT Hex8 OQ): $(grid.quality)")
     end
     println("Wrote $(length(grid.quads)) quads to $(abspath(cfg.path))")
     println("Cell-centre radial gap: $(minimum(grid.radial_gaps)) to $(maximum(grid.radial_gaps)) mm")

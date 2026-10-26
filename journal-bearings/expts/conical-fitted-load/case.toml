@@ -1,0 +1,28 @@
+status = "Rigid fitted-grid hypothesis; steady pressure-load balance, not experimental validation or stability"
+[physical]
+journal_midpoint_radius_mm = 50.0
+bearing_length_mm = 100.0
+reference_radial_clearance_um = 50.0
+semicone_angle_deg = 10.0
+rpm = 2000.0
+viscosity_pa_s = 0.0277
+external_force_n = [0.0, 1000.0, -200.0]
+feed_diameter_mm = 5.0
+feed_z_mm = 50.0
+feed_location = "+Y; housing fixed"
+feed_pressure_pa_gauge = 500000.0
+exit_pressure_pa_gauge = 0.0
+cavity_pressure_pa_gauge = 0.0
+mechanics = "Located shaft, nonrotating untilted translating bush; full overlap with longer journal. Pressure on solid lands only. No extra axial support in free-bush balance."
+[numerics]
+branch_clearances_um = [12.5, 18.75, 25.0, 37.5, 50.0, 75.0, 100.0]
+full_branch_levels = [1, 2]
+fine_anchor_clearances_um = [12.5, 50.0, 100.0]
+force_component_tolerance_n = 0.02
+finite_difference_step = 0.000001
+radial_iteration_cap = 12
+jfo_iteration_cap = 150
+bisection_iteration_cap = 18
+radial_call_cap = 60
+wall_cap_seconds = 1800
+scope = "Bounded continuation: c=12.5–100 um, bz approximately -0.213 to +0.284 mm. No sign change at samples is not global nonexistence; no physical stop or clearance range is inferred. Larger gaps require lubrication/inertia review."

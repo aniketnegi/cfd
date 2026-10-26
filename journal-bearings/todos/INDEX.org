@@ -1,0 +1,10 @@
+#+TITLE: Journal-bearing tasks
+#+TODO: TODO(t) ACTIVE(a) BLOCKED(b@) | DONE(d!)
+#+STARTUP: overview
+
+Keep task states here and details in the linked task files. Record scope,
+completion checks, decisions and verification before marking a task done.
+Generated meshes, plots and logs stay outside Git. Times are Asia/Kolkata.
+
+* ACTIVE Separate meshing from export and fluid tests
+[[file:meshing.org][Scope, work record and checks]]
