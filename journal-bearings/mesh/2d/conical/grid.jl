@@ -1,5 +1,6 @@
 # Periodic Quad4 grid on the housing surface.
 # Lengths are mm, theta is in radians.
+include("quality.jl")
 
 """
     background_grid(theta_nodes, z_nodes)
@@ -144,18 +145,21 @@ function housing_grid(
                 background.nodes[node_id(i + 1, j)][1]
             theta = uniform_theta ? (i - 0.5) * dtheta : (theta_low + theta_high) / 2
             cell_dtheta = uniform_theta ? dtheta : theta_high - theta_low
-            xh, yh, _ = bearing_point(p, theta, z, 1.0)
-            xj, yj, _ = bearing_point(p, theta, z, 0.0)
-
-            # √(xh^2 + yh^2) - √(xj^2 + yj^2)
-            radial_gaps[k] = hypot(xh, yh) - hypot(xj, yj)
+            geometry = bearing_radial_geometry(p, theta, z)
+            radial_gaps[k] = geometry.radial_gap
 
             # Analytic cone area, not the area of the faceted output quad.
-            areas[k] = hypot(xh, yh) * cell_dtheta * cell_ds
+            areas[k] = geometry.housing_radius * cell_dtheta * cell_ds
         end
     end
 
-    minimum(radial_gaps) > 0 || error("journal intersects housing") # just in case
-
-    return (; nodes, quads, radial_gaps, areas, n_theta, n_axial)
+    all(point -> all(isfinite, point), nodes) &&
+        all(x -> isfinite(x) && x > 0, radial_gaps) &&
+        all(x -> isfinite(x) && x > 0, areas) || error("invalid housing geometry, gaps or areas")
+    quality = SurfaceMeshQuality.tensor_grid_quality(collect(Float64,theta_nodes),
+        collect(Float64,z_nodes), bearing_geometry(p), cosd(p.semicone_angle_deg))
+    acceptance = SurfaceMeshQuality.mesh_acceptance(quality; valid_geometry=true,
+        placement_stable=true, termination_reason=:direct_construction)
+    acceptance.accepted || error("unported mesh does not meet the surface-quality limits: $quality")
+    return (; nodes, quads, radial_gaps, areas, n_theta, n_axial, quality, acceptance)
 end

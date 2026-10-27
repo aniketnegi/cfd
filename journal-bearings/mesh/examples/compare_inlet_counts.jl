@@ -11,8 +11,9 @@ function area_weighted_edge_ratio(grid)
     for coordinates in surface.localnodes
         edge_lengths = Float64[]
         for corner in 1:4
-            z = coordinates[corner, 2] * surface.ca
-            radius = surface.R + (surface.L / 2 - z) * surface.slope
+            z_mm = ControlledSurfaceInlet.chart_axial_position_mm(
+                surface.geometry_mm, surface.ca, coordinates[corner, 2])
+            radius = housing_radius(surface.geometry_mm, z_mm) * 1e-3
             edge = coordinates[mod1(corner + 1, 4), :] - coordinates[corner, :]
             push!(edge_lengths, norm(edge .* [radius / surface.R, 1.0]))
         end
@@ -42,9 +43,10 @@ function compare_counts(output_directory)
             catch err
                 message = sprint(showerror, err)
                 # Preserve rejected cases, but do not hide programming errors.
-                err isa ErrorException && occursin("does not meet the surface-quality limits", message) || rethrow()
+                err isa ErrorException && (occursin("does not meet the surface-quality limits", message) ||
+                    occursin("not accepted:", message)) || rethrow()
                 println(table, join((n_theta, n_axial, fill(NaN, 11)...,
-                    "quality rejected", replace(message, '\n' => ' ', '\t' => ' ')), '\t'))
+                    "rejected", replace(message, '\n' => ' ', '\t' => ' ')), '\t'))
                 flush(table)
                 println("$n_theta×$n_axial rejected: $message")
                 continue

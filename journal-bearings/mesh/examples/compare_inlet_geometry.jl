@@ -59,7 +59,8 @@ function compare_geometry(output_directory)
             catch err
                 message = sprint(showerror, err)
                 expected_rejection = err isa ArgumentError ||
-                    (err isa ErrorException && occursin("does not meet the surface-quality limits", message))
+                    (err isa ErrorException && (occursin("does not meet the surface-quality limits", message) ||
+                        occursin("not accepted:", message)))
                 expected_rejection || rethrow()
                 println(table, join((inputs..., "rejected", fill(NaN, 8)...,
                     replace(message, '\n' => ' ', '\t' => ' ')), '\t'))

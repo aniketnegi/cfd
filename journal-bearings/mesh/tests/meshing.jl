@@ -163,6 +163,8 @@ end
     @test isdefined(InletDependencies, :surface_feed_grid)
     @test isdefined(InletDependencies, :housing_grid)
     @test InletDependencies.ControlledSurfaceInlet.BearingParameters === InletDependencies.BearingParameters
+    @test InletDependencies.ControlledSurfaceInlet.housing_radius === InletDependencies.housing_radius
+    @test InletDependencies.ControlledSurfaceInlet.bearing_geometry === InletDependencies.bearing_geometry
     @test InletDependencies.ControlledSurfaceInlet.background_grid === InletDependencies.background_grid
     @test InletDependencies.ControlledSurfaceInlet.patch_axis === InletDependencies.patch_axis
     @test !isdefined(InletDependencies, :write_vtk)
@@ -245,8 +247,9 @@ end
 end
 
 @testset "Housing geometry with supplied spacing" begin
-    custom_theta = [0., .4, 2.1, 5.6]
-    custom_z = [0., 7., 42., 100.]
+    # Nonuniform but quality-acceptable spacing; extreme jumps now reject.
+    custom_theta = [0., 1.2, 2.8, 4.6]
+    custom_z = [0., 25., 60., 100.]
     for angle in (0., 10.)
         parameters = BearingParameters(journal_midpoint_radius=50., radial_clearance=.05,
             bearing_length=100., semicone_angle_deg=angle, eccentricity_ratio=.6)

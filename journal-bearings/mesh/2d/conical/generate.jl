@@ -156,8 +156,9 @@ function main(args=ARGS; cases_root=DEFAULT_CASES_ROOT)
     end
     if cfg.geometry == "surface-feed"
         println("Fitted inlet rim: $(length(grid.feed_edges)) edges; reservoir interior omitted")
-        println("Surface quality (NOT Hex8 OQ): $(grid.quality)")
     end
+    println("Surface quality (NOT Hex8 OQ): $(grid.quality)")
+    println("Mesh acceptance: $(grid.acceptance)")
     println("Wrote $(length(grid.quads)) quads to $(abspath(cfg.path))")
     println("Cell-centre radial gap: $(minimum(grid.radial_gaps)) to $(maximum(grid.radial_gaps)) mm")
 end

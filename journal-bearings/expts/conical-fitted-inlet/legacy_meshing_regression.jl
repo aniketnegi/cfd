@@ -1,15 +1,19 @@
-# Fluid coupling is separate from meshing.jl and inlet_counts.jl.
-# This optional test loads the retained experimental operator and Gmsh.
+# Historical fixed-mesh fluid regression, not a current mesh acceptance test.
+# Its reference forces/flows predate the area/centroid correction. They have not
+# been rebaselined for current meshes. A separate fluid review is required.
+# Retained with its owning fluid experiment, outside the mesher test suite.
+# Do not rebaseline these values without a separate fluid-validation review.
+# This script loads the retained experimental operator and Gmsh.
 using Test
 
 module CurrentMesh
 include(joinpath(@__DIR__, "../../bearing.jl"))
-include(joinpath(@__DIR__, "../2d/conical/grid.jl"))
-include(joinpath(@__DIR__, "../2d/conical/surface_feed.jl"))
+include(joinpath(@__DIR__, "../../mesh/2d/conical/grid.jl"))
+include(joinpath(@__DIR__, "../../mesh/2d/conical/surface_feed.jl"))
 end
 
 module ReviewedTrial
-include(joinpath(@__DIR__, "../../expts/conical-fitted-inlet/operator.jl"))
+include(joinpath(@__DIR__, "operator.jl"))
 end
 
 p=CurrentMesh.BearingParameters(journal_midpoint_radius=50.,radial_clearance=.05,

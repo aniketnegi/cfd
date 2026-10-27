@@ -3,7 +3,8 @@ include(joinpath(@__DIR__, "../../bearing.jl"))
 include(joinpath(@__DIR__, "../2d/conical/grid.jl"))
 include(joinpath(@__DIR__, "../vtk.jl"))
 
-function main()
+function main(path=joinpath(@__DIR__, "../../out/cases/conical-unported-adjusted-e0p6/mesh.vtk"))
+    ispath(path) && throw(ArgumentError("output already exists: $path"))
     p = BearingParameters(
         journal_midpoint_radius=50.0,
         bearing_length=100.0,
@@ -17,18 +18,17 @@ function main()
     patch_half_width = 7.5 # mm, matching the current 5 mm inlet construction
 
     theta_nodes = patch_axis(n_theta, n_theta ÷ 4, 2pi, pi/2,
-        patch_half_width / p.housing_midpoint_radius, patch_cells)[1:end-1]
+        patch_half_width / housing_radius(p, p.half_bearing_length), patch_cells)[1:end-1]
     z_nodes = patch_axis(n_axial, n_axial ÷ 2, p.bearing_length,
         p.half_bearing_length, patch_half_width, patch_cells)
     grid = housing_grid(p, n_theta, n_axial; theta_nodes, z_nodes)
 
-    path = joinpath(@__DIR__, "../../out/cases/conical-unported-adjusted-e0p6/mesh.vtk")
-    ispath(path) && throw(ArgumentError("output already exists: $path"))
     write_vtk(path, grid)
     println("Wrote $(length(grid.quads)) quads to $(abspath(path))")
     println("Cell-centre radial gap: $(extrema(grid.radial_gaps)) mm")
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    main()
+    length(ARGS) <= 1 || error("usage: mesh_adjusted_unported.jl [FRESH_OUTPUT.vtk]")
+    isempty(ARGS) ? main() : main(only(ARGS))
 end

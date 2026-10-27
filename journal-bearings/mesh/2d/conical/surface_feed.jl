@@ -27,38 +27,37 @@ function surface_feed_grid(
     n_axial::Int;
     feed_diameter::Real,
     feed_z::Real,
+    max_iterations::Int=ControlledSurfaceInlet.DEFAULT_MAX_ITERATIONS,
+    movement_tolerance::Real=ControlledSurfaceInlet.DEFAULT_MOVEMENT_TOLERANCE,
+    stability_steps::Int=ControlledSurfaceInlet.DEFAULT_STABILITY_STEPS,
 )
-    surface = ControlledSurfaceInlet.surface(p, n_theta, n_axial; feed_diameter, feed_z)
+    surface = ControlledSurfaceInlet.surface(p, n_theta, n_axial;
+        feed_diameter, feed_z, max_iterations, movement_tolerance, stability_steps)
 
     # Internal coordinates are (R_ref * theta, z / cos(angle)), in metres.
     nodes = Vector{NTuple{3,Float64}}(undef, length(surface.nodes))
     for (node, (chart_x, chart_y)) in enumerate(surface.nodes)
         theta = chart_x / surface.R
-        z = chart_y * surface.ca
-        housing_radius = surface.R + (surface.L / 2 - z) * surface.slope
-        # Keep the end plane exact in public units; conversion can round past L.
-        z_mm = chart_y == surface.L / surface.ca ? p.bearing_length : 1e3 * z
-        nodes[node] = (
-            1e3 * housing_radius * cos(theta),
-            1e3 * housing_radius * sin(theta),
-            z_mm,
-        )
+        z_mm = ControlledSurfaceInlet.chart_axial_position_mm(surface.geometry_mm, surface.ca, chart_y)
+        nodes[node] = bearing_point(p, theta, z_mm, 1.0)
     end
 
     radial_gaps = Vector{Float64}(undef, length(surface.quads))
     areas = Vector{Float64}(undef, length(surface.quads))
     for cell in eachindex(surface.quads)
         theta = surface.centre[cell, 1] / surface.R
-        z = surface.centre[cell, 2] * surface.ca * 1e3
-        housing_radius = p.housing_midpoint_radius + (p.half_bearing_length - z) * p.slope
-        journal_x, journal_y, _ = bearing_point(p, theta, z, 0.0)
-        radial_gaps[cell] = housing_radius - hypot(journal_x, journal_y)
+        z_mm = ControlledSurfaceInlet.chart_axial_position_mm(
+            surface.geometry_mm, surface.ca, surface.centre[cell, 2])
+        geometry = bearing_radial_geometry(p, theta, z_mm)
+        radial_gaps[cell] = geometry.radial_gap
 
         # The cone's area scale is linear in z. Evaluating it at the polygon
         # centroid exactly integrates the scale over that chart polygon.
-        areas[cell] = surface.areas[cell] * housing_radius / (surface.R * 1e3) * 1e6
+        areas[cell] = surface.areas[cell] * geometry.housing_radius / (surface.R * 1e3) * 1e6
     end
-    minimum(radial_gaps) > 0 || error("journal intersects housing")
+    all(point -> all(isfinite, point), nodes) &&
+        all(x -> isfinite(x) && x > 0, radial_gaps) &&
+        all(x -> isfinite(x) && x > 0, areas) || error("invalid fitted geometry, gaps or areas")
 
     feed_faces = findall(==(:feed), surface.boundary)
     feed_edges = surface.edge_nodes[feed_faces]
@@ -71,6 +70,8 @@ function surface_feed_grid(
         n_axial,
         feed_edges,
         quality=surface.quality,
+        acceptance=surface.acceptance,
+        placement=surface.placement,
         surface,
         layout="fitted-land-direct-v1",
     )

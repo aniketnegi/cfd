@@ -3,7 +3,8 @@ include(joinpath(@__DIR__, "../../bearing.jl"))
 include(joinpath(@__DIR__, "../2d/conical/grid.jl"))
 include(joinpath(@__DIR__, "../vtk.jl"))
 
-function main()
+function main(path=joinpath(@__DIR__, "../../out/cases/conical-unported-e0p6/mesh.vtk"))
+    ispath(path) && throw(ArgumentError("output already exists: $path"))
     # Gangrade's geometry
     p = BearingParameters(
         journal_midpoint_radius = 50.0,
@@ -14,16 +15,6 @@ function main()
     )
 
     grid = housing_grid(p, 512, 256)
-    path = joinpath(
-        @__DIR__,
-        "..",
-        "..",
-        "out",
-        "cases",
-        "conical-unported-e0p6",
-        "mesh.vtk"
-    )
-
     write_vtk(path, grid)
 
     println("Wrote $(length(grid.quads)) quads to $(abspath(path))")
@@ -31,5 +22,6 @@ function main()
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    main()
+    length(ARGS) <= 1 || error("usage: mesh_unported.jl [FRESH_OUTPUT.vtk]")
+    isempty(ARGS) ? main() : main(only(ARGS))
 end

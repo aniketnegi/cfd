@@ -69,7 +69,10 @@ end
 @testset "Unwrapped seam geometry and orientation" begin
     nodes = [(x,y) for y in (0.,.01) for x in (.02,.14,.26,.38)]
     quads = [(i,mod1(i+1,4),mod1(i+1,4)+4,i+4) for i in 1:4]
-    geometry = (R=.4/(2pi),L=.01,ca=1.,slope=0.,feed_z_m=.005,inlet_radius_m=.001)
+    parameters = BearingParameters(journal_midpoint_radius=.4/(2pi)*1e3-.05,
+        bearing_length=10.,radial_clearance=.05,semicone_angle_deg=0.,eccentricity_ratio=0.)
+    geometry = (R=parameters.housing_midpoint_radius*1e-3,L=.01,ca=1.,slope=0.,
+        geometry_mm=bearing_geometry(parameters),feed_z_m=.005,inlet_radius_m=.001)
     mesh = Inlet.assemble_surface_mesh(nodes,quads,Set{Tuple{Int,Int}}(); geometry...)
     positions = permutedims(hcat(collect.(nodes)...))
     @test count(==(:large),mesh.boundary) == 4

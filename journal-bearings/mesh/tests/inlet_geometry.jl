@@ -69,6 +69,7 @@ end
             @test surface.L == p.bearing_length * 1e-3
             @test surface.ca == cosd(p.semicone_angle_deg)
             @test surface.slope === p.slope
+            @test surface.geometry_mm == bearing_geometry(p)
             @test surface.feed_z_m == feed_z * 1e-3
             @test surface.inlet_radius_m == diameter/2 * 1e-3
             @test surface.period == 2pi * surface.R

@@ -3,6 +3,12 @@
 
 cross2(a, b) = a[1] * b[2] - a[2] * b[1]
 
+# Keep the supplied end plane exact when converting the metre chart back to mm.
+function chart_axial_position_mm(geometry_mm, ca, chart_y)
+    end_y = geometry_mm.bearing_length * 1e-3 / ca
+    return chart_y == end_y ? geometry_mm.bearing_length : chart_y * ca * 1e3
+end
+
 """
     cell_chart_area(coordinates)
 
@@ -51,6 +57,7 @@ Build cell centres, coordinate areas, shared faces and surface-quality measures.
 Faces have an owner cell and either a neighbour cell or neighbour=0 at a boundary.
 Face normals point out of the owner in the coordinate chart. R/L/feed_z_m and
 inlet_radius_m are metres, ca is cos(cone angle), and slope is tan(cone angle).
+geometry_mm retains the original bearing dimensions for shared radius queries.
 Returned field names are also consumed by the mesh exporter and fitted-grid
 calculations.
 """
@@ -62,11 +69,14 @@ function assemble_surface_mesh(
     L,
     ca,
     slope,
+    geometry_mm,
     feed_z_m,
     inlet_radius_m,
     period=2pi * R,
     regular=false,
 )
+    all(point -> all(isfinite, point) && 0 <= point[1] < period &&
+        0 <= point[2] <= L / ca, nodes) || error("invalid surface node coordinates")
     centres = zeros(length(quads), 2)
     chart_areas = zeros(length(quads))
     corner_values = Float64[]
@@ -92,9 +102,9 @@ function assemble_surface_mesh(
 
         edge_lengths = Float64[]
         for corner in 1:4
-            z = coordinates[corner, 2] * ca
-            housing_radius = R + (L / 2 - z) * slope
-            surface_scale = [housing_radius / R, 1.0]
+            z_mm = chart_axial_position_mm(geometry_mm, ca, coordinates[corner, 2])
+            radius = housing_radius(geometry_mm, z_mm) * 1e-3
+            surface_scale = [radius / R, 1.0]
             next_edge = (coordinates[mod1(corner + 1, 4), :] - coordinates[corner, :]) .* surface_scale
             previous_edge = (coordinates[mod1(corner - 1, 4), :] - coordinates[corner, :]) .* surface_scale
 
@@ -167,8 +177,9 @@ function assemble_surface_mesh(
 
         # Directions scale with the metric; normals use its inverse so their
         # dot product still describes the physical surface-face alignment.
-        housing_radius = R + (L / 2 - midpoint[2] * ca) * slope
-        surface_scale = [housing_radius / R, 1.0]
+        z_mm = chart_axial_position_mm(geometry_mm, ca, midpoint[2])
+        radius = housing_radius(geometry_mm, z_mm) * 1e-3
+        surface_scale = [radius / R, 1.0]
         normal = face_normals[face] ./ surface_scale
         push!(face_alignment,
             dot(connection .* surface_scale, normal) / (norm(connection .* surface_scale) * norm(normal)))
@@ -215,5 +226,6 @@ function assemble_surface_mesh(
         neighbour_area_ratios,
         slope,
         feed_z_m,
+        geometry_mm,
     )
 end

@@ -2,12 +2,6 @@
 # Construction uses (theta, z) with z in mm, then converts to metre-based chart
 # coordinates for node placement.
 
-@inline function housing_radius(parameters, z::Float64)
-    return parameters.journal_midpoint_radius +
-           (parameters.half_bearing_length - z) * parameters.slope +
-           parameters.radial_clearance
-end
-
 # Recover the +Y cone point from its XZ projection; return (theta, z).
 function housing_coordinates(parameters, x::Float64, z::Float64)
     radius = housing_radius(parameters, z)
@@ -232,6 +226,7 @@ function reference_seed(parameters::BearingParameters, n_theta::Int, n_axial::In
     nodes = [(reference_radius * theta, z * 1e-3 / cos_angle) for (theta, z) in surface_nodes]
     mesh = assemble_surface_mesh(nodes, surface_quads, rim;
         R=reference_radius, L=length_m, ca=cos_angle, slope=parameters.slope,
+        geometry_mm=bearing_geometry(parameters),
         feed_z_m=inlet_z * 1e-3, inlet_radius_m=inlet_radius * 1e-3)
     return (; mesh..., n_theta, n_axial, patch_cells, transition_layers)
 end
