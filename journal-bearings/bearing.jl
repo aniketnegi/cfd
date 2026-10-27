@@ -53,6 +53,8 @@ struct BearingParameters
         rL = jmr - half_bearing_length * slope
         isfinite(r0) && isfinite(rL) && min(r0, rL) > 0 ||
             throw(ArgumentError("journal end radii must be positive and finite"))
+        ecc < rL ||
+            throw(ArgumentError("journal eccentricity exceeds the small-end radius"))
 
         return new(
             jmr,
@@ -99,11 +101,6 @@ function bearing_point(p::BearingParameters, θ, z, ξ)
     isfinite(z) && 0 <= z <= p.bearing_length ||
         throw(ArgumentError("z must be within the bearing length"))
     isfinite(ξ) && 0 <= ξ <= 1 || throw(ArgumentError("ξ must be in [0, 1]"))
-
-    Rj = p.journal_midpoint_radius + (p.half_bearing_length - z) * p.slope
-
-    p.eccentricity < Rj ||
-        throw(ArgumentError("radial mapping requires eccentricity < local journal radius"))
 
     return _bearing_point_unchecked(p, θ, z, ξ)
 end

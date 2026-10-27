@@ -17,11 +17,13 @@ DESCRIPTION
     it exports land cells plus boundary lines, not a stepped cell mask or 3D
     passage. It prescribes no supply pressure and solves no fluid equation.
     Fitted inlet support: Rj=50, L=100, c=0.05 mm, angle=10 degrees, diameter=5 mm,
-    z=50 mm; background pairs 128x64, 256x128 or 512x256. Other fitted layouts
-    are rejected, never silently replaced by the old mask. With --experiment NAME, create
+    z=50 mm. Counts directly size the background; optimization runs at that
+    resolution. The opening replaces a patch, so final counts differ.
+    Use --output FILE for fitted inlets. Named fitted-case manifests are not
+    supported by the current external case loader.
+    For unported meshes, --experiment NAME creates
     out/cases/NAME/{mesh.vtk,experiment.toml}; the name must be new.
-    Alternatively, --output FILE preserves the standalone VTK mode
-    (without a reusable manifest). Options accept --key VALUE or --key=VALUE.
+    Options accept --key VALUE or --key=VALUE.
 
 REQUIRED OPTIONS
     --geometry=GEOMETRY        unported or surface-feed
@@ -30,13 +32,13 @@ REQUIRED OPTIONS
     --clearance-mm=MM          radial clearance
     --cone-angle-deg=DEG       cone semi-angle; 0 gives a cylinder
     --eccentricity-ratio=RATIO journal offset divided by radial clearance
-    --experiment=NAME         new case name; exclusive with --output
+    --experiment=NAME         new unported case name; exclusive with --output
     --output=FILE             standalone .vtk path; exclusive with --experiment
 
 OPTIONS
     --n-theta=N               background circumferential count (default: 512)
     --n-axial=N               background axial count (default: 256)
-                               fitted land cells are not an N_theta x N_axial array
+                               fitted cells replace a patch in this background
     --feed-diameter-mm=MM      required for surface-feed only
     --feed-z-mm=MM             feed centre from the large axial end;
                                required for surface-feed only
@@ -102,6 +104,9 @@ function parse_grid_args(args; cases_root=DEFAULT_CASES_ROOT)
     haskey(opts, "--output") != haskey(opts, "--experiment") ||
         throw(ArgumentError("specify exactly one of --experiment or --output"))
     experiment = get(opts, "--experiment", nothing)
+    geometry == "surface-feed" && !isnothing(experiment) && throw(ArgumentError(
+        "named fitted cases require an updated case loader; use --output FILE",
+    ))
     dir = isnothing(experiment) ? nothing : case_directory(experiment; cases_root)
     path = isnothing(experiment) ? opts["--output"] : joinpath(dir, "mesh.vtk")
     isnothing(experiment) && !endswith(lowercase(path), ".vtk") &&

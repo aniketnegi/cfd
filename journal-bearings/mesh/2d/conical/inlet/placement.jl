@@ -1,180 +1,245 @@
-# Promoted from expts/conical-inlet-transition/layout.jl; fixed bearing/midpoint.
-# Same objective/refinement; neighbourhood and placement lengths scale with drill diameter.
-function macro_data(m)
-    nodes=hcat([collect(x) for x in m.nodes]...)'
-    nodes=Matrix(nodes)
-    boundary_edges=Dict{Tuple{Int,Int},Int}()
-    valence=zeros(Int,length(m.nodes))
-    for q in m.quads
-        for i in 1:4
-            valence[q[i]]+=1
-            e=Tuple(sort([q[i],q[mod1(i+1,4)]]));boundary_edges[e]=get(boundary_edges,e,0)+1
-        end
+# Improve node positions on the requested mesh.
+# Coordinates are (R_ref * theta, z / cos(angle)), in metres.
+
+# Translate each cell before measuring it, and unwrap cells crossing the seam.
+function cell_coordinates(mesh, positions, quad)
+    coordinates = Matrix(positions[collect(quad), :])
+    if maximum(coordinates[:, 1]) - minimum(coordinates[:, 1]) > mesh.period / 2
+        coordinates[coordinates[:, 1] .< mesh.period / 2, 1] .+= mesh.period
     end
-    boundary=Set(v for (e,n) in boundary_edges if n==1 for v in e)
-    rim=Set(e for (e,n) in boundary_edges if n==1 &&
-        all(v->1e-10<nodes[v,2]<m.L/m.ca-1e-10,e))
-    # Keep the exact mouth, axial ends, seam and remote background unchanged.
-    # One diameter-relative halo rule, not a separately tuned width per case.
-    halo=.020*(m.inlet_radius_m/.0025)
-    free=[i for i in eachindex(valence) if valence[i]>0 && !(i in boundary) &&
-        abs(nodes[i,1]-m.R*pi/2)<halo && abs(nodes[i,2]-.05/m.ca)<halo/m.ca]
-    lookup=Dict(v=>k for (k,v) in enumerate(free))
-    active=findall(q->any(v->haskey(lookup,v),q),m.quads)
-    return (;nodes,free,active,rim,valence,boundary)
+    coordinates .-= coordinates[1:1, :]
+    return coordinates
 end
 
-# Analytic gradient: angle energy cot(angle)^2, plus neighbouring log-area
-# differences. Weights are explicit experiment choices, not literature constants.
-function layout_energy(m,d,variables;area_weight=.25,anchor_weight=.01)
-    X=copy(d.nodes);X[d.free,:]=reshape(variables,:,2)
-    gradient=zeros(size(X));areas=zeros(length(m.quads));area_gradient=zeros(length(m.quads))
-    energy=0.
-    for (k,q) in enumerate(m.quads)
-        # Cells at the periodic seam are fixed and excluded from angle updates.
-        xy=Matrix(X[collect(q),:])
-        maximum(xy[:,1])-minimum(xy[:,1])>m.period/2 && (xy[xy[:,1].<m.period/2,1].+=m.period)
-        # Translate coordinates before shoelace area to avoid cancellation.
-        xy .-= xy[1:1,:]
-        A=sum(xy[i,1]*xy[mod1(i+1,4),2]-xy[i,2]*xy[mod1(i+1,4),1] for i in 1:4)/2
-        A>0 || return (Inf,zeros(length(variables)))
-        areas[k]=A
-        k in d.active || continue
-        for i in 1:4
-            j,l=mod1(i+1,4),mod1(i-1,4)
-            a=xy[j,:]-xy[i,:];b=xy[l,:]-xy[i,:]
-            cross=a[1]*b[2]-a[2]*b[1];dotab=dot(a,b)
-            cross>0 || return (Inf,zeros(length(variables)))
-            energy+=(dotab/cross)^2
-            ga=2dotab/cross^2*b-2dotab^2/cross^3*[b[2],-b[1]]
-            gb=2dotab/cross^2*a-2dotab^2/cross^3*[-a[2],a[1]]
-            gradient[q[j],:].+=ga;gradient[q[l],:].+=gb;gradient[q[i],:].-=ga+gb
-        end
-    end
-    for f in eachindex(m.owner)
-        k,l=m.owner[f],m.neighbour[f]
-        l==0 && continue
-        (k in d.active || l in d.active) || continue
-        t=log(areas[k]/areas[l]);energy+=area_weight*t^2
-        area_gradient[k]+=2area_weight*t/areas[k];area_gradient[l]-=2area_weight*t/areas[l]
-    end
-    for k in d.active
-        # A small area anchor discourages collapse/drift without freezing sizes.
-        t=log(areas[k]/m.areas[k]);energy+=anchor_weight*t^2
-        area_gradient[k]+=2anchor_weight*t/areas[k]
-    end
-    for (k,q) in enumerate(m.quads)
-        area_gradient[k]==0 && continue
-        for i in 1:4
-            j,l=mod1(i+1,4),mod1(i-1,4)
-            dx=X[q[l],1]-X[q[j],1];dx=mod(dx+m.period/2,m.period)-m.period/2
-            gradient[q[i],1]+=area_gradient[k]*(X[q[j],2]-X[q[l],2])/2
-            gradient[q[i],2]+=area_gradient[k]*dx/2
-        end
-    end
-    return energy,vec(gradient[d.free,:])
+function cell_chart_area(coordinates)
+    return sum(
+        coordinates[corner, 1] * coordinates[mod1(corner + 1, 4), 2] -
+        coordinates[corner, 2] * coordinates[mod1(corner + 1, 4), 1]
+        for corner in 1:4
+    ) / 2
 end
 
-function controlled_layout(m;max_iterations=180)
-    scale=m.inlet_radius_m/.0025
-    d=macro_data(m);x=vec(copy(d.nodes[d.free,:]));f,g=layout_energy(m,d,x)
-    ss=Vector{Float64}[];ys=Vector{Float64}[];history=NamedTuple[]
+"""
+    macro_data(mesh)
+
+Select movable nodes and the cells affected by them. Keep the inlet rim, axial
+ends, periodic seam and distant background fixed. For the 5 mm inlet, interior
+nodes may move within an approximately ±20 mm neighbourhood of its centre.
+"""
+function macro_data(mesh)
+    nodes = hcat([collect(point) for point in mesh.nodes]...)'
+    nodes = Matrix(nodes)
+    edge_counts = Dict{Tuple{Int,Int},Int}()
+    node_valence = zeros(Int, length(mesh.nodes))
+    for quad in mesh.quads
+        for corner in 1:4
+            node_valence[quad[corner]] += 1
+            edge = minmax(quad[corner], quad[mod1(corner + 1, 4)])
+            edge_counts[edge] = get(edge_counts, edge, 0) + 1
+        end
+    end
+
+    boundary_nodes = Set(node for (edge, count) in edge_counts if count == 1 for node in edge)
+    rim_edges = Set(edge for (edge, count) in edge_counts if count == 1 &&
+        all(node -> 1e-10 < nodes[node, 2] < mesh.L / mesh.ca - 1e-10, edge))
+    movable_half_width = 0.020 * (mesh.inlet_radius_m / 0.0025)
+    movable_nodes = [
+        node for node in eachindex(node_valence)
+        if node_valence[node] > 0 && !(node in boundary_nodes) &&
+            abs(nodes[node, 1] - mesh.R * pi/2) < movable_half_width &&
+            abs(nodes[node, 2] - 0.05 / mesh.ca) < movable_half_width / mesh.ca
+    ]
+    movable_node_set = Set(movable_nodes)
+    active_cells = findall(quad -> any(node -> node in movable_node_set, quad), mesh.quads)
+    active_mask = falses(length(mesh.quads))
+    active_mask[active_cells] .= true
+    active_faces = [
+        face for face in eachindex(mesh.owner)
+        if mesh.neighbour[face] > 0 &&
+            (active_mask[mesh.owner[face]] || active_mask[mesh.neighbour[face]])
+    ]
+
+    # Cells without movable vertices never change during optimization. Cache
+    # their areas once instead of measuring the entire fine mesh at every trial.
+    initial_areas = [cell_chart_area(cell_coordinates(mesh, nodes, quad)) for quad in mesh.quads]
+    all(>(0), initial_areas) || error("nonpositive initial cell area")
+
+    return (;
+        nodes,
+        free=movable_nodes,
+        active=active_cells,
+        active_faces,
+        initial_areas,
+        rim=rim_edges,
+        valence=node_valence,
+        boundary=boundary_nodes,
+    )
+end
+
+"""
+    layout_energy(mesh, selection, variables; area_weight=0.25, anchor_weight=0.01)
+
+Return the mesh objective and its gradient with respect to movable coordinates.
+Penalize corner cotangents squared, neighbouring log-area differences, and smaller
+log-area changes relative to the initial mesh. Weights are construction choices.
+An inverted trial cell returns infinite energy so the line search rejects it.
+"""
+function layout_energy(mesh, selection, variables; area_weight=0.25, anchor_weight=0.01)
+    positions = copy(selection.nodes)
+    positions[selection.free, :] = reshape(variables, :, 2)
+    gradient = zeros(size(positions))
+    areas = copy(selection.initial_areas)
+    area_gradient = zeros(length(mesh.quads))
+    energy = 0.0
+
+    for cell in selection.active
+        quad = mesh.quads[cell]
+        coordinates = cell_coordinates(mesh, positions, quad)
+        area = cell_chart_area(coordinates)
+        area > 0 || return (Inf, zeros(length(variables)))
+        areas[cell] = area
+
+        for corner in 1:4
+            next_corner = mod1(corner + 1, 4)
+            previous_corner = mod1(corner - 1, 4)
+            next_edge = coordinates[next_corner, :] - coordinates[corner, :]
+            previous_edge = coordinates[previous_corner, :] - coordinates[corner, :]
+            corner_cross = next_edge[1] * previous_edge[2] - next_edge[2] * previous_edge[1]
+            edge_dot = dot(next_edge, previous_edge)
+            corner_cross > 0 || return (Inf, zeros(length(variables)))
+            energy += (edge_dot / corner_cross)^2
+
+            # Differentiate cot(angle)^2 with respect to both incident edges;
+            # the corner vertex receives the opposite of their combined change.
+            next_edge_gradient = 2 * edge_dot / corner_cross^2 * previous_edge -
+                2 * edge_dot^2 / corner_cross^3 * [previous_edge[2], -previous_edge[1]]
+            previous_edge_gradient = 2 * edge_dot / corner_cross^2 * next_edge -
+                2 * edge_dot^2 / corner_cross^3 * [-next_edge[2], next_edge[1]]
+            gradient[quad[next_corner], :] .+= next_edge_gradient
+            gradient[quad[previous_corner], :] .+= previous_edge_gradient
+            gradient[quad[corner], :] .-= next_edge_gradient + previous_edge_gradient
+        end
+    end
+
+    # Area ratios discourage an abrupt jump in cell size across a shared face.
+    for face in selection.active_faces
+        owner_cell = mesh.owner[face]
+        neighbour_cell = mesh.neighbour[face]
+        log_ratio = log(areas[owner_cell] / areas[neighbour_cell])
+        energy += area_weight * log_ratio^2
+        area_gradient[owner_cell] += 2 * area_weight * log_ratio / areas[owner_cell]
+        area_gradient[neighbour_cell] -= 2 * area_weight * log_ratio / areas[neighbour_cell]
+    end
+    for cell in selection.active
+        # The smaller anchor discourages collapse/drift without fixing cell sizes.
+        log_ratio = log(areas[cell] / mesh.areas[cell])
+        energy += anchor_weight * log_ratio^2
+        area_gradient[cell] += 2 * anchor_weight * log_ratio / areas[cell]
+    end
+
+    # An inactive cell has no movable vertices, so its coordinate derivatives
+    # cannot contribute to the returned gradient.
+    for cell in selection.active
+        quad = mesh.quads[cell]
+        area_gradient[cell] == 0 && continue
+        for corner in 1:4
+            next_corner = mod1(corner + 1, 4)
+            previous_corner = mod1(corner - 1, 4)
+            dx = positions[quad[previous_corner], 1] - positions[quad[next_corner], 1]
+            dx = mod(dx + mesh.period / 2, mesh.period) - mesh.period / 2
+            gradient[quad[corner], 1] += area_gradient[cell] *
+                (positions[quad[next_corner], 2] - positions[quad[previous_corner], 2]) / 2
+            gradient[quad[corner], 2] += area_gradient[cell] * dx / 2
+        end
+    end
+    return energy, vec(gradient[selection.free, :])
+end
+
+"""
+    controlled_layout(mesh; max_iterations=180)
+
+Improve movable node positions using limited-memory BFGS and backtracking.
+Keep up to eight position/gradient-change pairs, and limit each node's trial
+motion to 0.2 mm for the 5 mm inlet. Return the last accepted layout and history;
+reaching the iteration cap is not a claim that the optimum was found.
+"""
+function controlled_layout(mesh; max_iterations=180)
+    diameter_scale = mesh.inlet_radius_m / 0.0025
+    selection = macro_data(mesh)
+    variables = vec(copy(selection.nodes[selection.free, :]))
+    energy, gradient = layout_energy(mesh, selection, variables)
+    position_changes = Vector{Float64}[]
+    gradient_changes = Vector{Float64}[]
+    history = NamedTuple[]
+
     for iteration in 1:max_iterations
-        push!(history,(;iteration,energy=f,gradient_norm=norm(g)))
-        norm(g)*scale<1e-5 && break
-        q=copy(g);alpha=zeros(length(ss))
-        for i in reverse(eachindex(ss))
-            alpha[i]=dot(ss[i],q)/dot(ys[i],ss[i]);q.-=alpha[i].*ys[i]
+        push!(history, (; iteration, energy, gradient_norm=norm(gradient)))
+        norm(gradient) * diameter_scale < 1e-5 && break
+
+        # L-BFGS two-loop recursion: estimate inverse-curvature times gradient
+        # from recent accepted steps, without forming a large Hessian matrix.
+        working_gradient = copy(gradient)
+        alpha = zeros(length(position_changes))
+        for index in reverse(eachindex(position_changes))
+            alpha[index] = dot(position_changes[index], working_gradient) /
+                dot(gradient_changes[index], position_changes[index])
+            working_gradient .-= alpha[index] .* gradient_changes[index]
         end
-        gamma=isempty(ss) ? 1e-7*scale^2 : dot(ss[end],ys[end])/dot(ys[end],ys[end])
-        direction=gamma.*q
-        for i in eachindex(ss)
-            beta=dot(ys[i],direction)/dot(ys[i],ss[i]);direction.+=ss[i].*(alpha[i]-beta)
+        inverse_curvature_scale = isempty(position_changes) ? 1e-7 * diameter_scale^2 :
+            dot(position_changes[end], gradient_changes[end]) / dot(gradient_changes[end], gradient_changes[end])
+        direction = inverse_curvature_scale .* working_gradient
+        for index in eachindex(position_changes)
+            beta = dot(gradient_changes[index], direction) /
+                dot(gradient_changes[index], position_changes[index])
+            direction .+= position_changes[index] .* (alpha[index] - beta)
         end
         direction .*= -1
-        dot(direction,g)<0 || (direction=-g*(1e-7*scale^2))
-        maxmove=maximum(sqrt.(sum(reshape(direction,:,2).^2,dims=2)))
-        maxstep=.0002*scale
-        maxmove>maxstep && (direction.*=maxstep/maxmove) # 0.04 times drill diameter
-        accepted=false
+        if !(dot(direction, gradient) < 0)
+            direction = -gradient * (1e-7 * diameter_scale^2)
+        end
+
+        maximum_motion = maximum(sqrt.(sum(reshape(direction, :, 2).^2, dims=2)))
+        step_limit = 0.0002 * diameter_scale
+        if maximum_motion > step_limit
+            direction .*= step_limit / maximum_motion
+        end
+
+        accepted = false
         for backtrack in 0:22
-            trial=x+2.0^(-backtrack)*direction;ft,gt=layout_energy(m,d,trial)
-            if isfinite(ft) && ft<=f+1e-4*dot(g,trial-x)
-                s=trial-x;y=gt-g
-                if dot(s,y)>1e-12*norm(s)*norm(y)
-                    push!(ss,s);push!(ys,y)
-                    length(ss)>8 && (popfirst!(ss);popfirst!(ys))
+            trial = variables + 2.0^(-backtrack) * direction
+            trial_energy, trial_gradient = layout_energy(mesh, selection, trial)
+            if isfinite(trial_energy) && trial_energy <= energy + 1e-4 * dot(gradient, trial - variables)
+                position_change = trial - variables
+                gradient_change = trial_gradient - gradient
+                # Retain only pairs with positive, sufficiently resolved curvature.
+                if dot(position_change, gradient_change) > 1e-12 * norm(position_change) * norm(gradient_change)
+                    push!(position_changes, position_change)
+                    push!(gradient_changes, gradient_change)
+                    if length(position_changes) > 8
+                        popfirst!(position_changes)
+                        popfirst!(gradient_changes)
+                    end
                 end
-                x,f,g=trial,ft,gt;accepted=true;break
+                variables, energy, gradient = trial, trial_energy, trial_gradient
+                accepted = true
+                break
             end
         end
         accepted || break
     end
-    nodes=copy(d.nodes);nodes[d.free,:]=reshape(x,:,2)
-    mesh=assemble_surface_mesh([Tuple(nodes[i,:]) for i in axes(nodes,1)],m.quads,d.rim;
-        inlet_radius_m=m.inlet_radius_m)
-    return (;mesh,history,initial_energy=first(history).energy,final_energy=f,
-        free_nodes=length(d.free),maximum_move_m=maximum(sqrt.(sum((nodes-d.nodes).^2,dims=2))))
-end
 
-# Refine the SAME macro map, not a newly solved harmonic layout. A Coons-type
-# correction follows the exact drilling rim; straight macro edges are shared.
-function subdivide_layout(m,level)
-    level in (1,2,4) || throw(ArgumentError("comparison levels are 1,2,4"))
-    d=macro_data(m);nodes=NTuple{2,Float64}[];quads=NTuple{4,Int}[]
-    ids=Dict{Any,Int}();rim=Set{Tuple{Int,Int}}()
-    function add(key,xy)
-        if haskey(ids,key)
-            old=nodes[ids[key]];dx=mod(xy[1]-old[1]+m.period/2,m.period)-m.period/2
-            hypot(dx,xy[2]-old[2])<1e-12 || error("nonmatching shared macro edge")
-            return ids[key]
-        end
-        push!(nodes,(mod(xy[1],m.period),xy[2]));ids[key]=length(nodes)
-        return length(nodes)
-    end
-    for (k,q) in enumerate(m.quads)
-        xy=m.localnodes[k];boundaryside=0
-        for side in 1:4
-            Tuple(sort([q[side],q[mod1(side+1,4)]])) in d.rim && (boundaryside=side)
-        end
-        angle=Float64[]
-        if boundaryside>0
-            for i in (boundaryside,mod1(boundaryside+1,4))
-                x,y=xy[i,:];z=y*m.ca;rh=m.R+(.05-z)*tand(10.)
-                push!(angle,atan(z-.05,rh*cos(x/m.R)))
-            end
-        end
-        grid=zeros(Int,level+1,level+1)
-        for j in 0:level,i in 0:level
-            u,v=i/level,j/level
-            position=vec(xy'*[(1-u)*(1-v),u*(1-v),u*v,(1-u)*v])
-            if boundaryside>0
-                t,w=boundaryside==1 ? (u,1-v) : boundaryside==2 ? (v,u) : boundaryside==3 ? (1-u,v) : (1-v,1-u)
-                delta=mod(angle[2]-angle[1]+pi,2pi)-pi;theta=angle[1]+t*delta
-                X=m.inlet_radius_m*cos(theta);z=.05+m.inlet_radius_m*sin(theta);rh=m.R+(.05-z)*tand(10.)
-                exact=[m.R*acos(X/rh),z/m.ca]
-                chord=(1-t)*xy[boundaryside,:]+t*xy[mod1(boundaryside+1,4),:]
-                position.+=w.*(exact-chord)
-            end
-            if i in (0,level) && j in (0,level)
-                vertex=j==0 ? (i==0 ? q[1] : q[2]) : (i==0 ? q[4] : q[3])
-                key=(:vertex,vertex)
-            elseif j==0 || i==level || j==level || i==0
-                side,t=j==0 ? (1,i) : i==level ? (2,j) : j==level ? (3,level-i) : (4,level-j)
-                a,b=q[side],q[mod1(side+1,4)]
-                key=(:edge,min(a,b),max(a,b),a<b ? t : level-t)
-            else
-                key=(:cell,k,i,j)
-            end
-            grid[i+1,j+1]=add(key,position)
-        end
-        for j in 1:level,i in 1:level
-            child=(grid[i,j],grid[i+1,j],grid[i+1,j+1],grid[i,j+1]);push!(quads,child)
-            boundaryside==1 && j==1 && push!(rim,Tuple(sort([child[1],child[2]])))
-            boundaryside==2 && i==level && push!(rim,Tuple(sort([child[2],child[3]])))
-            boundaryside==3 && j==level && push!(rim,Tuple(sort([child[3],child[4]])))
-            boundaryside==4 && i==1 && push!(rim,Tuple(sort([child[4],child[1]])))
-        end
-    end
-    return assemble_surface_mesh(nodes,quads,rim;level,inlet_radius_m=m.inlet_radius_m)
+    nodes = copy(selection.nodes)
+    nodes[selection.free, :] = reshape(variables, :, 2)
+    optimized_mesh = assemble_surface_mesh(
+        [Tuple(nodes[node, :]) for node in axes(nodes, 1)], mesh.quads, selection.rim;
+        inlet_radius_m=mesh.inlet_radius_m,
+    )
+    return (;
+        mesh=optimized_mesh,
+        history,
+        initial_energy=first(history).energy,
+        final_energy=energy,
+        free_nodes=length(selection.free),
+        maximum_move_m=maximum(sqrt.(sum((nodes - selection.nodes).^2, dims=2))),
+    )
 end

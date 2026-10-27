@@ -1,60 +1,181 @@
-# Promoted unchanged cone-chart geometry and quality calculations (SI units).
-# Same geometry/quality calculation for a supplied conforming surface layout.
-function assemble_surface_mesh(nodes,quads,rim;R=.05005,L=.1,ca=cosd(10.),
-        period=2pi*R,regular=false,level=1,inlet_radius_m=.0025)
-    centre=zeros(length(quads),2);areas=zeros(length(quads));corners=Float64[];ratios=Float64[]
-    localnodes=Matrix{Float64}[]
-    for (k,q) in enumerate(quads)
-        xy=hcat([collect(nodes[i]) for i in q]...)'
-        xy=Matrix(xy)
-        maximum(xy[:,1])-minimum(xy[:,1])>period/2 && (xy[xy[:,1].<period/2,1].+=period)
-        push!(localnodes,xy)
-        cross2(a,b)=a[1]*b[2]-a[2]*b[1]
-        cross=[cross2(xy[i,:],xy[mod1(i+1,4),:]) for i in 1:4]
-        area=sum(cross)/2
-        area>0 || error("nonpositive cell $k")
-        centre[k,:]=sum((xy[i,:]+xy[mod1(i+1,4),:])*cross[i] for i in 1:4)/(6area)
-        centre[k,1]=mod(centre[k,1],period);areas[k]=area
-        lengths=Float64[]
-        for i in 1:4
-            z=xy[i,2]*ca;rh=R+(.05-z)*tand(10.)
-            S=[rh/R,1.]
-            a=(xy[mod1(i+1,4),:]-xy[i,:]).*S
-            b=(xy[mod1(i-1,4),:]-xy[i,:]).*S
-            push!(corners,cross2(a,b)/(norm(a)*norm(b)));push!(lengths,norm(a))
+# Build cell/face geometry in coordinates (R_ref * theta, z / cos(angle)).
+# Lengths here are metres. Physical surface measurements require the cone metric.
+
+"""
+    assemble_surface_mesh(nodes, quads, rim; ...)
+
+Build cell centres, coordinate areas, shared faces and surface-quality measures.
+`rim` contains unordered vertex-ID pairs identifying the inlet boundary.
+
+Faces have an owner cell and either a neighbour cell or neighbour=0 at a boundary.
+Face normals point out of the owner in the coordinate chart. Returned field names
+are also consumed by the existing mesh exporter and fitted-grid calculations.
+"""
+function assemble_surface_mesh(
+    nodes,
+    quads,
+    rim;
+    R=0.05005,
+    L=0.1,
+    ca=cosd(10.0),
+    period=2pi * R,
+    regular=false,
+    inlet_radius_m=0.0025,
+)
+    centres = zeros(length(quads), 2)
+    chart_areas = zeros(length(quads))
+    corner_values = Float64[]
+    edge_ratios = Float64[]
+    local_nodes = Matrix{Float64}[]
+
+    cross2(a, b) = a[1] * b[2] - a[2] * b[1]
+
+    for (cell, quad) in enumerate(quads)
+        coordinates = hcat([collect(nodes[node]) for node in quad]...)'
+        coordinates = Matrix(coordinates)
+
+        # A seam-crossing cell must be measured across its short angular span,
+        # not across nearly the full circumference of the coordinate chart.
+        if maximum(coordinates[:, 1]) - minimum(coordinates[:, 1]) > period / 2
+            coordinates[coordinates[:, 1] .< period / 2, 1] .+= period
         end
-        push!(ratios,maximum(lengths)/minimum(lengths))
+        push!(local_nodes, coordinates)
+
+        edge_crosses = [
+            cross2(coordinates[corner, :], coordinates[mod1(corner + 1, 4), :])
+            for corner in 1:4
+        ]
+        area = sum(edge_crosses) / 2
+        area > 0 || error("nonpositive cell $cell")
+        centres[cell, :] = sum(
+            (coordinates[corner, :] + coordinates[mod1(corner + 1, 4), :]) * edge_crosses[corner]
+            for corner in 1:4
+        ) / (6 * area)
+        centres[cell, 1] = mod(centres[cell, 1], period)
+        chart_areas[cell] = area
+
+        edge_lengths = Float64[]
+        for corner in 1:4
+            z = coordinates[corner, 2] * ca
+            housing_radius = R + (0.05 - z) * tand(10.0)
+            surface_scale = [housing_radius / R, 1.0]
+            next_edge = (coordinates[mod1(corner + 1, 4), :] - coordinates[corner, :]) .* surface_scale
+            previous_edge = (coordinates[mod1(corner - 1, 4), :] - coordinates[corner, :]) .* surface_scale
+
+            # Positive sine of the corner angle: 1 at a right angle, 0 at collapse.
+            push!(corner_values, cross2(next_edge, previous_edge) / (norm(next_edge) * norm(previous_edge)))
+            push!(edge_lengths, norm(next_edge))
+        end
+        push!(edge_ratios, maximum(edge_lengths) / minimum(edge_lengths))
     end
-    owner=Int[];neighbour=Int[];mid=Vector{Float64}[];normals=Vector{Float64}[];lengths=Float64[];boundary=Symbol[]
-    edgeids=Tuple{Int,Int}[];lookup=Dict{Tuple{Int,Int},Int}()
-    for (k,q) in enumerate(quads),i in 1:4
-        pair=Tuple(sort([q[i],q[mod1(i+1,4)]]))
-        if haskey(lookup,pair)
-            f=lookup[pair];neighbour[f]==0 || error("nonmanifold edge");neighbour[f]=k
+
+    owner = Int[]
+    neighbour = Int[]
+    face_midpoints = Vector{Float64}[]
+    face_normals = Vector{Float64}[]
+    face_lengths = Float64[]
+    boundary = Symbol[]
+    edge_nodes = Tuple{Int,Int}[]
+    face_for_edge = Dict{Tuple{Int,Int},Int}()
+
+    for (cell, quad) in enumerate(quads), corner in 1:4
+        edge = minmax(quad[corner], quad[mod1(corner + 1, 4)])
+        if haskey(face_for_edge, edge)
+            face = face_for_edge[edge]
+            neighbour[face] == 0 || error("nonmanifold edge")
+            neighbour[face] = cell
         else
-            xy=localnodes[k];a=xy[i,:];b=xy[mod1(i+1,4),:];t=b-a;l=norm(t)
-            m=(a+b)/2;m[1]=mod(m[1],period)
-            push!(owner,k);push!(neighbour,0);push!(mid,m);push!(normals,[t[2],-t[1]]/l);push!(lengths,l)
-            push!(edgeids,pair);lookup[pair]=length(owner);push!(boundary,:internal)
+            coordinates = local_nodes[cell]
+            start = coordinates[corner, :]
+            finish = coordinates[mod1(corner + 1, 4), :]
+            tangent = finish - start
+            edge_length = norm(tangent)
+            midpoint = (start + finish) / 2
+            midpoint[1] = mod(midpoint[1], period)
+
+            push!(owner, cell)
+            push!(neighbour, 0)
+            push!(face_midpoints, midpoint)
+            push!(face_normals, [tangent[2], -tangent[1]] / edge_length)
+            push!(face_lengths, edge_length)
+            push!(edge_nodes, edge)
+            face_for_edge[edge] = length(owner)
+            push!(boundary, :internal)
         end
     end
-    wrapdx(x)=mod(x+period/2,period)-period/2
-    cosines=Float64[];growth=Float64[]
-    for f in eachindex(owner)
-        k,l=owner[f],neighbour[f];x=mid[f]
-        if l==0
-            boundary[f]=edgeids[f] in rim ? :feed : abs(x[2])<1e-12 ? :large : abs(x[2]-L/ca)<1e-12 ? :small : error("unclassified boundary")
+
+    wrap_distance(distance) = mod(distance + period / 2, period) - period / 2
+    face_alignment = Float64[]
+    neighbour_area_ratios = Float64[]
+    for face in eachindex(owner)
+        owner_cell = owner[face]
+        neighbour_cell = neighbour[face]
+        midpoint = face_midpoints[face]
+
+        if neighbour_cell == 0
+            if edge_nodes[face] in rim
+                boundary[face] = :feed
+            elseif abs(midpoint[2]) < 1e-12
+                boundary[face] = :large
+            elseif abs(midpoint[2] - L / ca) < 1e-12
+                boundary[face] = :small
+            else
+                error("unclassified boundary")
+            end
         end
-        d=l==0 ? x-centre[k,:] : centre[l,:]-centre[k,:];d[1]=wrapdx(d[1])
-        rh=R+(.05-x[2]*ca)*tand(10.);S=[rh/R,1.]
-        normal=normals[f]./S
-        push!(cosines,dot(d.*S,normal)/(norm(d.*S)*norm(normal)))
-        l>0 && push!(growth,max(areas[k],areas[l])/min(areas[k],areas[l]))
+
+        connection = neighbour_cell == 0 ?
+            midpoint - centres[owner_cell, :] :
+            centres[neighbour_cell, :] - centres[owner_cell, :]
+        connection[1] = wrap_distance(connection[1])
+
+        # Directions scale with the metric; normals use its inverse so their
+        # dot product still describes the physical surface-face alignment.
+        housing_radius = R + (0.05 - midpoint[2] * ca) * tand(10.0)
+        surface_scale = [housing_radius / R, 1.0]
+        normal = face_normals[face] ./ surface_scale
+        push!(face_alignment,
+            dot(connection .* surface_scale, normal) / (norm(connection .* surface_scale) * norm(normal)))
+        if neighbour_cell > 0
+            push!(neighbour_area_ratios,
+                max(chart_areas[owner_cell], chart_areas[neighbour_cell]) /
+                min(chart_areas[owner_cell], chart_areas[neighbour_cell]))
+        end
     end
-    minimum(corners)>0 && minimum(cosines)>0 || error("invalid corner or face orientation")
-    quality=(;minimum_scaled_corner=minimum(corners),maximum_edge_ratio=maximum(ratios),
-        minimum_face_alignment=minimum(cosines),maximum_nonorthogonality_deg=acosd(minimum(cosines)),
-        maximum_neighbour_area_ratio=maximum(growth),cells=length(quads),rim_edges=count(==(:feed),boundary))
-    return (;nodes,quads,edge_nodes=edgeids,centre,areas,owner,neighbour,mid,normals,lengths,boundary,localnodes,R,L,ca,period,quality,regular,level,inlet_radius_m,
-        corner_scores=vec(minimum(reshape(corners,4,:),dims=1)),face_alignment=cosines,neighbour_area_ratios=growth)
+
+    minimum(corner_values) > 0 && minimum(face_alignment) > 0 ||
+        error("invalid corner or face orientation")
+    quality = (;
+        minimum_scaled_corner=minimum(corner_values),
+        maximum_edge_ratio=maximum(edge_ratios),
+        minimum_face_alignment=minimum(face_alignment),
+        maximum_nonorthogonality_deg=acosd(minimum(face_alignment)),
+        maximum_neighbour_area_ratio=maximum(neighbour_area_ratios),
+        cells=length(quads),
+        rim_edges=count(==(:feed), boundary),
+    )
+    return (;
+        nodes,
+        quads,
+        edge_nodes,
+        centre=centres,
+        areas=chart_areas,
+        owner,
+        neighbour,
+        mid=face_midpoints,
+        normals=face_normals,
+        lengths=face_lengths,
+        boundary,
+        localnodes=local_nodes,
+        R,
+        L,
+        ca,
+        period,
+        quality,
+        regular,
+        inlet_radius_m,
+        corner_scores=vec(minimum(reshape(corner_values, 4, :), dims=1)),
+        face_alignment,
+        neighbour_area_ratios,
+    )
 end

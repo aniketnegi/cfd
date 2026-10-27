@@ -1,8 +1,14 @@
-# VTK POLYDATA export for regular surfaces and surfaces with an inlet rim.
-# Coordinates/gap fields are mm; analytic_area_mm2 is physical surface area.
-function write_vtk(path::AbstractString, grid; feed_cells::Union{Nothing,AbstractVector{Bool}}=nothing)
-    isnothing(feed_cells) || length(feed_cells) == length(grid.quads) ||
-        throw(ArgumentError("feed_cells must have one value per quad"))
+function write_vtk(
+    path::AbstractString,
+    grid;
+    feed_cells::Union{Nothing,AbstractVector{Bool}} = nothing
+)
+    (
+        isnothing(feed_cells)
+        || length(feed_cells) == length(grid.quads)
+        || throw(ArgumentError("feed_cells must have one value per quad"))
+    )
+
     feed_edges = hasproperty(grid, :feed_edges) ? grid.feed_edges : NTuple{2,Int}[]
     !isempty(feed_edges) && !isnothing(feed_cells) &&
         throw(ArgumentError("a fitted rim is a boundary, not a feed-cell mask"))

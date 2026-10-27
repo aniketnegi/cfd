@@ -1,53 +1,86 @@
-# Fitted, land-only surface inlet. Geometry only: no supply pressure or 3D passage.
-# Caller loads bearing.jl. This constructor does not require housing_grid.
+# Quadrilateral mesh around the +Y inlet opening.
+# Public lengths are mm and areas are mm². Caller loads bearing.jl and grid.jl first.
 include(joinpath(@__DIR__, "inlet", "controlled.jl"))
 
 """
     surface_feed_grid(p, n_theta, n_axial; feed_diameter, feed_z)
 
-Build the accepted controlled transition around the +Y circular-drill mouth.
-Public lengths/areas are mm/mm². `quads` contains LAND cells only; `feed_edges`
-contains pairs of node IDs on the inlet boundary. There is no `feed_cells` mask
-and no rectangular i,j indexing of the returned cells. n_theta/n_axial describe
-background resolution, not the actual number or indexing of fitted cells.
+Build the supported conical mesh with a 5 mm inlet at the axial midpoint.
+Cells cover the solid surface around the opening; `feed_edges` identifies its rim.
 
-Currently supported: Rj=50 mm, L=100 mm, c=0.05 mm, semi-angle=10°, 5 mm mouth
-at z=50 mm, and background pairs (128,64), (256,128), (512,256). Eccentricity may
-vary within BearingParameters' limits: it changes gaps, not the housing mesh.
-Other layouts throw ArgumentError rather than silently using the reference
-geometry or falling back to the old staircase. `surface` exposes the SI cone
-chart/face connectivity for a geometry-aware conservative operator; regular-grid
-two-point stencils must not be applied to it. Surface scores are NOT Hex8 OQ.
+Currently requires Rj=50 mm, L=100 mm, c=0.05 mm and a 10° semi-cone angle.
+n_theta and n_axial size the initial background directly. The inlet replaces
+part of that background, so the returned cells do not form a rectangular array.
+Node optimization runs at the requested resolution; there is no hidden coarse
+grid or subsequent subdivision. Insufficient counts or a failed quality check
+reject the mesh.
+
+`nodes`, `radial_gaps` and `areas` use mm/mm/mm². `surface` retains the internal
+surface coordinates in metres and the cell/face connectivity. Its coordinate
+areas differ from physical conical areas. Eccentricity changes the gaps, not
+housing vertices. Unsupported geometry or resolution throws `ArgumentError`.
 """
-function surface_feed_grid(p::BearingParameters, n_theta::Int, n_axial::Int;
-                           feed_diameter::Real, feed_z::Real)
-    dimensions=(p.journal_midpoint_radius,p.bearing_length,p.radial_clearance,
-                p.semicone_angle_deg,Float64(feed_diameter),Float64(feed_z))
-    reference=(50.,100.,.05,10.,5.,50.)
-    all(isfinite,dimensions) && dimensions==reference ||
-        throw(ArgumentError("controlled fitted inlet currently supports Rj=50, L=100, c=0.05 mm, angle=10°, diameter=5 mm, z=50 mm only; other layouts need a checked construction"))
-    (n_theta,n_axial) in ((128,64),(256,128),(512,256)) ||
-        throw(ArgumentError("controlled fitted inlet supports background pairs 128×64, 256×128, 512×256; fitted cells are not an n_theta×n_axial array"))
-    p.eccentricity < p.journal_midpoint_radius-p.half_bearing_length*p.slope ||
-        throw(ArgumentError("journal eccentricity exceeds the small-end radius"))
-    surface=ControlledSurfaceInlet.surface(n_theta÷128)
-    nodes=[begin
-        theta=x/surface.R;z=y*surface.ca
-        rh=surface.R+(.05-z)*tand(10.)
-        (1e3*rh*cos(theta),1e3*rh*sin(theta),1e3*z)
-    end for (x,y) in surface.nodes]
-    radial_gaps=Float64[];areas=Float64[]
-    for k in eachindex(surface.quads)
-        theta=surface.centre[k,1]/surface.R;z=surface.centre[k,2]*surface.ca*1e3
-        rh=p.housing_midpoint_radius+(p.half_bearing_length-z)*p.slope
-        xj,yj,_=bearing_point(p,theta,z,0.)
-        push!(radial_gaps,rh-hypot(xj,yj))
-        # Cone metric is linear in z: centroid integration is exact for the
-        # polygonal chart cell, not an assertion of exact circular-mouth area.
-        push!(areas,surface.areas[k]*rh/(surface.R*1e3)*1e6)
+function surface_feed_grid(
+    p::BearingParameters,
+    n_theta::Int,
+    n_axial::Int;
+    feed_diameter::Real,
+    feed_z::Real,
+)
+    dimensions = (
+        p.journal_midpoint_radius,
+        p.bearing_length,
+        p.radial_clearance,
+        p.semicone_angle_deg,
+        Float64(feed_diameter),
+        Float64(feed_z),
+    )
+    reference = (50.0, 100.0, 0.05, 10.0, 5.0, 50.0)
+    all(isfinite, dimensions) && dimensions == reference || throw(ArgumentError(
+        "inlet mesh requires Rj=50, L=100, c=0.05 mm, angle=10°, diameter=5 mm and z=50 mm",
+    ))
+    surface = ControlledSurfaceInlet.surface(n_theta, n_axial)
+
+    # Internal coordinates are (R_ref * theta, z / cos(angle)), in metres.
+    nodes = Vector{NTuple{3,Float64}}(undef, length(surface.nodes))
+    for (node, (chart_x, chart_y)) in enumerate(surface.nodes)
+        theta = chart_x / surface.R
+        z = chart_y * surface.ca
+        housing_radius = surface.R + (0.05 - z) * tand(10.0)
+        nodes[node] = (
+            1e3 * housing_radius * cos(theta),
+            1e3 * housing_radius * sin(theta),
+            1e3 * z,
+        )
     end
-    minimum(radial_gaps)>0 || error("journal intersects housing")
-    feed_edges=surface.edge_nodes[findall(==(:feed),surface.boundary)]
-    return (;nodes,quads=surface.quads,radial_gaps,areas,n_theta,n_axial,
-            feed_edges,quality=surface.quality,surface,layout="controlled-fitted-land-v1")
+
+    radial_gaps = Vector{Float64}(undef, length(surface.quads))
+    areas = Vector{Float64}(undef, length(surface.quads))
+    for cell in eachindex(surface.quads)
+        theta = surface.centre[cell, 1] / surface.R
+        z = surface.centre[cell, 2] * surface.ca * 1e3
+        housing_radius = p.housing_midpoint_radius + (p.half_bearing_length - z) * p.slope
+        journal_x, journal_y, _ = bearing_point(p, theta, z, 0.0)
+        radial_gaps[cell] = housing_radius - hypot(journal_x, journal_y)
+
+        # The cone's area scale is linear in z. Evaluating it at the polygon
+        # centroid exactly integrates the scale over that chart polygon.
+        areas[cell] = surface.areas[cell] * housing_radius / (surface.R * 1e3) * 1e6
+    end
+    minimum(radial_gaps) > 0 || error("journal intersects housing")
+
+    feed_faces = findall(==(:feed), surface.boundary)
+    feed_edges = surface.edge_nodes[feed_faces]
+    return (;
+        nodes,
+        quads=surface.quads,
+        radial_gaps,
+        areas,
+        n_theta,
+        n_axial,
+        feed_edges,
+        quality=surface.quality,
+        surface,
+        layout="fitted-land-direct-v1",
+    )
 end
