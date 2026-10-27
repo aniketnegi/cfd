@@ -1,6 +1,47 @@
 # Build cell/face geometry in coordinates (R_ref * theta, z / cos(angle)).
 # Lengths here are metres. Physical surface measurements require the cone metric.
 
+cross2(a, b) = a[1] * b[2] - a[2] * b[1]
+
+"""
+    cell_chart_area(coordinates)
+
+Signed polygon area in the coordinate chart. Subtract the first vertex before
+forming cross products so a small cell does not lose accuracy far from zero.
+The input must already be unwrapped across the periodic seam.
+"""
+function cell_chart_area(coordinates)
+    origin_x, origin_y = coordinates[1, 1], coordinates[1, 2]
+    corners = size(coordinates, 1)
+    twice_area = sum(1:corners) do corner
+        next_corner = mod1(corner + 1, corners)
+        cross2(
+            (coordinates[corner, 1] - origin_x, coordinates[corner, 2] - origin_y),
+            (coordinates[next_corner, 1] - origin_x, coordinates[next_corner, 2] - origin_y),
+        )
+    end
+    return twice_area / 2
+end
+
+"""
+    cell_chart_centroid(coordinates, area=cell_chart_area(coordinates))
+
+Polygon centroid in the same unwrapped chart. Form its first moment near the
+first vertex, then restore the origin; area is signed and must be nonzero.
+"""
+function cell_chart_centroid(coordinates, area=cell_chart_area(coordinates))
+    iszero(area) && throw(ArgumentError("a polygon centroid requires nonzero chart area"))
+    origin = coordinates[1, :]
+    relative = coordinates .- transpose(origin)
+    corners = size(coordinates, 1)
+    moment = sum(1:corners) do corner
+        next_corner = mod1(corner + 1, corners)
+        (relative[corner, :] + relative[next_corner, :]) *
+            cross2(relative[corner, :], relative[next_corner, :])
+    end
+    return origin + moment / (6 * area)
+end
+
 """
     assemble_surface_mesh(nodes, quads, rim; ...)
 
@@ -32,8 +73,6 @@ function assemble_surface_mesh(
     edge_ratios = Float64[]
     local_nodes = Matrix{Float64}[]
 
-    cross2(a, b) = a[1] * b[2] - a[2] * b[1]
-
     for (cell, quad) in enumerate(quads)
         coordinates = hcat([collect(nodes[node]) for node in quad]...)'
         coordinates = Matrix(coordinates)
@@ -45,16 +84,9 @@ function assemble_surface_mesh(
         end
         push!(local_nodes, coordinates)
 
-        edge_crosses = [
-            cross2(coordinates[corner, :], coordinates[mod1(corner + 1, 4), :])
-            for corner in 1:4
-        ]
-        area = sum(edge_crosses) / 2
+        area = cell_chart_area(coordinates)
         area > 0 || error("nonpositive cell $cell")
-        centres[cell, :] = sum(
-            (coordinates[corner, :] + coordinates[mod1(corner + 1, 4), :]) * edge_crosses[corner]
-            for corner in 1:4
-        ) / (6 * area)
+        centres[cell, :] = cell_chart_centroid(coordinates, area)
         centres[cell, 1] = mod(centres[cell, 1], period)
         chart_areas[cell] = area
 

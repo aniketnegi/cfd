@@ -11,14 +11,6 @@ function cell_coordinates(mesh, positions, quad)
     return coordinates
 end
 
-function cell_chart_area(coordinates)
-    return sum(
-        coordinates[corner, 1] * coordinates[mod1(corner + 1, 4), 2] -
-        coordinates[corner, 2] * coordinates[mod1(corner + 1, 4), 1]
-        for corner in 1:4
-    ) / 2
-end
-
 """
     macro_data(mesh)
 

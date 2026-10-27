@@ -173,6 +173,7 @@ julia --project=. --check-bounds=yes mesh/tests/meshing.jl
 julia --project=. --check-bounds=yes mesh/tests/mesh_cli.jl
 julia --project=. --check-bounds=yes mesh/tests/inlet_counts.jl
 julia --project=. --check-bounds=yes mesh/tests/inlet_geometry.jl
+julia --project=. --check-bounds=yes mesh/tests/chart_geometry.jl
 ```
 
 The first checks shared connectivity, uniform/adjusted geometry, input validation,
@@ -182,7 +183,10 @@ The third checks non-whitelisted/odd counts, topology and the cached objective's
 analytic gradient against finite differences. The fourth checks supplied
 geometry through every stage: cone/rim equations, independently integrated
 opening area, Cartesian tangent-based corner/alignment measurements, movable
-node selection and eccentricity-independent housing geometry.
+node selection and eccentricity-independent housing geometry. The fifth checks
+signed areas and centroids against 256-bit references, translation behaviour,
+seam unwrapping, degenerate/reversed polygons, exact assembly/optimizer area
+agreement, and the zero initial area-change penalty.
 These tests load no fluid solvers or Gmsh. Objective caching reuses fixed-cell
 areas and touches only affected cells/faces; it does not change the objective
 or its derivatives.
@@ -248,8 +252,8 @@ Two combined examples:
 
 | Rj / L / clearance (mm) | Angle | D / inlet z (mm) | Background | Cells | Corner min | Alignment min | Chart-area ratio max |
 |------------------------|------:|-----------------:|------------|------:|-----------:|--------------:|---------------------:|
-| 45 / 90 / 0.06          |   12° | 4 / 35.3         | 127 x 65   | 8,387 | 0.909606 | 0.989892 | 1.630901 |
-| 60 / 120 / 0.08         |   15° | 6 / 70.3         | 640 x 208  | 136,704 | 0.917930 | 0.993468 | 1.469359 |
+| 45 / 90 / 0.06          |   12° | 4 / 35.3         | 127 x 65   | 8,387 | 0.909584 | 0.989899 | 1.630901 |
+| 60 / 120 / 0.08         |   15° | 6 / 70.3         | 640 x 208  | 136,704 | 0.917702 | 0.993392 | 1.469237 |
 
 An opening touching an end, a fitting opening whose transition crosses an end,
 and an oversized opening are rejected with their reasons. Geometry checks also
@@ -258,12 +262,12 @@ optimization centre, and metric measurements against independent 3D tangents.
 This is mesh verification, not fluid-model validation.
 
 Generated evidence is under
-`out/cases/conical-inlet-geometry-comparison-final/`; checks and snapshots are
-under `out/reviews/parameterized-inlet-geometry/`. These outputs are ignored.
+`out/cases/conical-inlet-stable-chart-geometry/`; checks and snapshots are under
+`out/reviews/stable-chart-geometry/`. These outputs are ignored.
 
-## Reference-case regression
+## Parameterization checkpoint
 
-Against source checkpoint `a72cf56`, the 128×64, 256×128 and 512×256 reference
+At checkpoint `713cedc`, compared with `a72cf56`, the 128×64, 256×128 and 512×256 reference
 inlets retain bitwise-identical chart coordinates, connectivity, radial gaps
 and physical areas. Initial objectives and gradients are identical at all three
 counts; the full 128×64 optimization history is identical too.
@@ -271,7 +275,39 @@ Using the cached slope consistently changes Cartesian coordinates by at most
 7.11e-15 mm, with roundoff-level changes in physical quality measurements.
 Surface metadata adds `slope` and `feed_z_m`.
 
-All regular-mesh fields and VTK bytes match the earlier baseline. Recording and
-comparing the current nine-mesh baseline also matches all fields and VTK bytes
-exactly. The separate area-calculation consistency cleanup has not been folded
-into this geometry change.
+Those exact inlet comparisons describe parameterization alone, before the
+area/centroid correction below. They are not a claim that today's inlet meshes
+match that earlier snapshot.
+
+## Shared chart areas and stable centroids
+
+`inlet/metrics.jl` owns `cell_chart_area`, used by assembly and optimization.
+It subtracts the first vertex before forming cross products; the centroid uses
+first moments about the same vertex and then restores the origin. Callers
+unwrap seam-crossing cells first. Areas remain signed, so assembly still rejects
+reversed or collapsed cells rather than hiding their orientation with abs(area).
+
+Assembly areas now exactly match the optimizer's areas at its initial mesh.
+The initial area-change anchor is exactly zero. At the previously worst sampled
+512×256 cell, relative area error against a 256-bit reference falls from
+4.93e-11 to 4.54e-17; centroid error falls from 1.34e-12 m to 4.59e-18 m.
+
+The optimized mesh is not unchanged. Correcting the reference areas changes
+the optimizer's numerical inputs even though its formulas, weights, tolerances
+and 180-iteration cap stay fixed. Across 21 before/after cases, connectivity and
+rim vertices remain exact, but maximum vertex displacement reaches 13.16 µm
+and maximum individual physical cell-area change reaches 1.11%. All 19 geometry
+examples still pass the same quality gates; the three unavailable requests
+still reject. The compared runs do not establish optimizer convergence or
+improved fluid accuracy.
+
+In two controlled comparisons (128×64 with D=8 mm and 512×256 with D=5 mm),
+changing only the old initial area array reproduces the new optimized chart
+coordinates and full iteration history exactly. Both old and new runs reach
+the iteration cap. This isolates the layout changes from the centroid fix.
+Measured changes are saved in `out/reviews/stable-chart-geometry/checkpoint.tsv`.
+
+All regular-mesh fields and VTK bytes match the earlier baseline. The current
+nine-mesh snapshot is also exactly repeatable in all fields and VTK bytes.
+Earlier snapshots are retained; their inlet equality checks have not been
+relaxed to accommodate the numerical changes.
