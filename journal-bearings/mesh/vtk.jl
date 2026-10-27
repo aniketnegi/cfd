@@ -12,8 +12,8 @@ function write_vtk(
     feed_edges = hasproperty(grid, :feed_edges) ? grid.feed_edges : NTuple{2,Int}[]
     !isempty(feed_edges) && !isnothing(feed_cells) &&
         throw(ArgumentError("a fitted rim is a boundary, not a feed-cell mask"))
-    # Keep the unported writer's existing temporary-file contract used by
-    # atomic solver exports. New fitted exports never overwrite an existing file.
+    # Unported exports accept temporary files for atomic solver writes.
+    # Fitted exports require a fresh path.
     !isempty(feed_edges) && ispath(path) && throw(ArgumentError("output already exists: $path"))
     mkpath(dirname(path))
     open(path, "w") do io

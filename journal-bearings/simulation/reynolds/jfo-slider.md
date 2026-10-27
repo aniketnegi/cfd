@@ -1,15 +1,13 @@
-# Mass-conserving cavitation: published 1D checkpoint
+# Mass-conserving cavitation: 1D slider benchmark
 
-## Scope and decision
+## Scope
 
-Implemented a small steady rigid/isoviscous/incompressible finite-volume
-pressure/liquid-content solver in `jfo_slider.jl`. It passes an independently
+`jfo_slider.jl` solves steady rigid/isoviscous/incompressible finite-volume
+pressure and liquid content. Its tests compare against an independently
 evaluated continuum solution for a published sinusoidal slider, including
-rupture **and reformation**. This replaces reliance on broad graph-read bands
-in the old repository's test. No legacy implementation was imported.
+rupture **and reformation**.
 
 **This is numerical verification, not experimental validation or conical EHD.**
-The conical/cylindrical signed solvers and named-run CLI remain unchanged.
 The benchmark's lubricant, pressure, geometry and supply are not choices for
 the Gangrade/VG32 bearing. Its open streamwise inlet replenishes the film;
 it does not resolve the periodic bearing's supply/inventory ambiguity.
@@ -155,13 +153,11 @@ At 1280 cells (dx=0.09765625 mm):
   whole-domain flux spread: 6.99e-13, each normalized by max|u h|=5e-5 m²/s.
 - Seven active-set iterations; no pressure/content clipping.
 
-**149 assertions pass.** In addition to the source outputs and six grids,
-they cover reverse motion, pressure-reference shifts, speed/viscosity scaling,
+In addition to the source outputs and six grids, tests cover reverse motion, pressure-reference shifts, speed/viscosity scaling,
 constant-gap pressure-driven flow, explicit starved/dry inflow, rejection of
 inconsistent inputs and nonconvergence, and a pressure-clamping counterexample.
 The §4.2 fluctuating-gap example exercises two cavities and conservation only;
-it is not claimed as another quantitative full-field benchmark. The existing
-conical suite (136) and cylindrical suite (22) also pass unchanged.
+it is not another quantitative full-field benchmark.
 
 Regression guards include pressure refinement ratio <0.4, finest pressure L2
 <1e-4, finest fill mean absolute error <1e-3, fronts within two cells, and
@@ -190,16 +186,9 @@ Saved evidence:
 `cylindrical-regression.log`. The manifest records solver, reference, test,
 evidence-script, plot-script and available source-PDF hashes.
 
-## Subsequent 2D checkpoint
+## Bearing solver
 
-The [2D periodic conical extension](conical-jfo.md) now checks its assembly
-separately with a curved manufactured cavity, full-film limits and reservoir
-flux accounting. The unchanged active-set algorithm was extracted into
-`jfo_active_set.jl` and is shared by both solvers; all 149 slider assertions
-and the six-grid errors above are preserved. Historical output was not replaced.
-A passed 1D benchmark alone does not verify conical metric factors or feed
-accounting; the additional 2D evidence and its limitations are on that page.
-
-Review concrete physical supply, cavitation pressure, oil properties, load and
-axial restraint before bearing predictions. No elasticity or comparison with
-Gangrade's measured pressures has yet run.
+The [2D periodic conical solver](conical-jfo.md) shares `jfo_active_set.jl`
+but verifies its own flux assembly with a curved manufactured cavity,
+full-film limits and reservoir accounting. The 1D benchmark alone does not
+verify conical metric factors or feed accounting.

@@ -1,5 +1,5 @@
-# Explicit fitted-case dispatch into the existing Newton equilibrium algorithm.
-# No rectangular operator, feed mask, or fitted-cell reshaping is used here.
+# Fitted-case equilibrium adapter; incompatible with the public mesh API.
+# Requires grid.jl in PublicGeometry and assumes a mesh.level field.
 include(joinpath(@__DIR__,"../conical-fitted-inlet/run.jl"))
 module PublicGeometry
 include(joinpath(@__DIR__,"../../bearing.jl"))
@@ -9,7 +9,7 @@ end
 struct FittedLoadProblem{M}
     reference::BearingParameters
     mesh::M
-    # The unchanged Newton routine uses these two reference scaling quantities.
+    # Reference scales for the Newton iteration.
     radial_clearance::Float64
     slope::Float64
 end

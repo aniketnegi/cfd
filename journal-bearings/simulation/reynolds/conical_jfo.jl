@@ -1,4 +1,4 @@
-# Steady rigid conical JFO numerical checkpoint. See conical-jfo.md.
+# Steady rigid conical JFO solver. See conical-jfo.md.
 # No elasticity, thermal solve, passage resistance, or load equilibrium.
 include(joinpath(@__DIR__,"conical.jl"))
 include(joinpath(@__DIR__,"jfo_active_set.jl"))

@@ -18,7 +18,7 @@ function macro_data(m)
     rim=Set(e for (e,n) in boundary_edges if n==1 &&
         all(v->1e-10<nodes[v,2]<m.L/m.ca-1e-10,e))
     # Keep the exact mouth, axial ends, seam and remote background unchanged.
-    # A wider movable halo replaces the previously frozen support interface.
+    # The movable halo includes the ring/background support interface.
     free=[i for i in eachindex(valence) if valence[i]>0 && !(i in boundary) &&
         abs(nodes[i,1]-m.R*pi/2)<.020 && abs(nodes[i,2]-.05/m.ca)<.020/m.ca]
     lookup=Dict(v=>k for (k,v) in enumerate(free))

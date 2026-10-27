@@ -1,4 +1,4 @@
-# Case-specific refinement run, not a new general simulation CLI.
+# Case-specific conical full-film refinement run.
 include(joinpath(@__DIR__, "conical.jl"))
 include(joinpath(@__DIR__, "..", "..", "experiment.jl"))
 

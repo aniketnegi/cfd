@@ -1,4 +1,4 @@
-# Historical fixed-budget L-BFGS study (stability_steps=0), not public acceptance.
+# Fixed-budget L-BFGS study (stability_steps=0), not public acceptance.
 using Serialization, Dates
 include(joinpath(@__DIR__, "compare_inlet_iterations.jl"))
 

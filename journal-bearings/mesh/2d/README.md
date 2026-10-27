@@ -152,16 +152,15 @@ julia --project=. mesh/2d/generate.jl \
 Use `--geometry unported` without feed flags for a complete surface. CLI output
 reports quality and acceptance for both paths. Output files must be fresh.
 Unported meshes also support `--experiment NAME`. Named fitted cases deliberately
-reject: the external case loader still assumes historical layouts. Use `--output`
-until simulation integration is reviewed; no silent compatibility fallback.
+reject: the case loader does not support `fitted-land-direct-v1`. Use `--output`
+for fitted surfaces; see [solver support](../../docs/solver-support.md).
 
 `mesh/examples/mesh_{unported,adjusted_unported,inlet}.jl` are standalone examples
 with an optional fresh VTK path. `compare_inlet_counts.jl` and
 `compare_inlet_geometry.jl` record accepted and rejected requests.
 
-The VTK writer retains its unported overwrite contract for atomic simulation
-exports. Its optional `feed_cells` scalar remains live compatibility for existing
-regular-grid simulation exporters. It is rejected for fitted rim meshes and is
+The VTK writer permits unported overwrites for atomic simulation exports.
+Its optional `feed_cells` scalar serves regular-grid simulation exporters. It is rejected for fitted rim meshes and is
 not an alternative inlet construction.
 
 ## Tests
@@ -178,7 +177,7 @@ chart/radius/chord oracles, analytic unported quality, actual motion windows, se
 invariants, derivatives and observer/trace/DEBUG independence. A suite can also
 be run directly, e.g. `mesh/tests/practical_acceptance.jl`.
 
-For a deliberately captured numerical checkpoint, use a **fresh** baseline:
+To record and compare mesh snapshots, use a **fresh** baseline:
 
 ```sh
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 JULIA_NUM_THREADS=1
@@ -186,18 +185,13 @@ julia --project=. --threads=1 --gcthreads=1 mesh/tests/meshing_snapshot.jl recor
 julia --project=. --threads=1 --gcthreads=1 mesh/tests/meshing_snapshot.jl compare out/snapshot.toml
 ```
 
-Use identical threading controls for both commands. On the reviewed Julia build,
+Use identical threading controls for both commands. On the tested Julia build,
 `OPENBLAS_NUM_THREADS=1` alone still leaves BLAS at eight threads; setting
 `OMP_NUM_THREADS=1` also is necessary. Fine fitted optimization can amplify
-thread-dependent floating-point differences; this is not a geometry change.
+thread-dependent floating-point differences.
 
 This hashes every public mesh field and exact VTK bytes. Never overwrite an old
 baseline or weaken comparison to hide an intentional algorithm change.
-
-Historical force/flow assertions are retained with their owning experiment in
-`expts/conical-fitted-inlet/legacy_meshing_regression.jl`. They predate the present
-mesh and are **not** current fluid-validation evidence or part of the mesher
-suite. Their review belongs to the next simulation milestone.
 
 ## Optional numerical diagnostics
 
@@ -208,12 +202,11 @@ change numerical decisions; callback exceptions propagate.
 
 The fixed-budget examples `compare_inlet_iterations.jl`,
 `diagnose_inlet_optimizer.jl` and `inlet_long_run.jl` explicitly select
-`stability_steps=0` for historical gradient/work-budget investigations. This
+`stability_steps=0` for gradient/work-budget investigations. This
 mode cannot bypass public mesh acceptance. Diagnostic snapshots preserve original
 seeds/area anchors; they are not an API for restarting a rebuilt terminal mesh.
 
-`queue_inlet_long_runs.py` is an optional Linux resource-aware historical-study
-queue. It freezes all numerical sources, limits independent single-threaded
+`queue_inlet_long_runs.py` is an optional Linux resource-aware study queue. It freezes all numerical sources, limits independent single-threaded
 workers, and leaves other workloads untouched. DEBUG writes plain `key=value`
 stderr; disk telemetry remains available without DEBUG. Resource/time limits
 control work, never numerical success. A finished process is not automatically

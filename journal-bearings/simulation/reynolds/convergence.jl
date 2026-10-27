@@ -1,5 +1,5 @@
 # Reproducible resolution sweep for any cylindrical unported full-film case;
-# main_convergence() retains the original fixed illustrative example.
+# main_convergence() runs a fixed illustrative example.
 # Pressure is signed; force and flow diagnostics
 # MUST NOT be interpreted as physical cavitating load or oil consumption.
 using LinearAlgebra

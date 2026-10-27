@@ -69,7 +69,7 @@ for l,c in zip((1,2,4),('#92b9bd','#258d9b','#183e52')):
         ax.plot(diameters,[float(row(d,l)[key]) for d in diameters],'o-',color=c,label=f'level {l}')
         ax.set(xlabel='Drill diameter [mm]',title=title,xticks=diameters);ax.grid(alpha=.2)
 for ax,bound in zip(axes,(.9,.9,2)):
-    ax.axhline(bound,color='#bd403a',ls='--',label='unchanged gate')
+    ax.axhline(bound,color='#bd403a',ls='--',label='quality gate')
 axes[-1].legend(fontsize=9)
 fig.suptitle('Same quality gates for every diameter; positive/conforming cells checked separately')
 fig.savefig(out/'quality.png',dpi=170);plt.close(fig)

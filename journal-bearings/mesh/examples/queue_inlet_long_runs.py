@@ -169,7 +169,7 @@ def run_queue(args):
             atomic_json(directory / "status.json", status)
             resources.write(f"{utc_now()}\t{load}\t{available/GIB}\t{len(active)}\t{remaining}\n")
             report = ["# Live L-BFGS long-run study", "", f"Updated: {status['updated_utc']}", "",
-                      "Historical stability_steps=0 mode; process completion is not mesh acceptance.", "",
+                      "Diagnostic stability_steps=0 mode; process completion is not mesh acceptance.", "",
                       "|Case|Queue state|Iteration|Stop reason|Quality (last sampled)|", "|---|---|---:|---|---|"]
             for job in jobs:
                 progress = job.get("progress", {})

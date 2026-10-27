@@ -247,7 +247,7 @@ end
 end
 
 @testset "Housing geometry with supplied spacing" begin
-    # Nonuniform but quality-acceptable spacing; extreme jumps now reject.
+    # Nonuniform but quality-acceptable spacing; extreme jumps must reject.
     custom_theta = [0., 1.2, 2.8, 4.6]
     custom_z = [0., 25., 60., 100.]
     for angle in (0., 10.)

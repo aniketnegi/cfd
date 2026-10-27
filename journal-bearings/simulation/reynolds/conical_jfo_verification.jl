@@ -1,4 +1,4 @@
-# Numerical cone checkpoint only: broad artificial reservoir, not a rig port.
+# Numerical verification with a broad artificial reservoir, not a rig port.
 using TOML, SHA, LinearAlgebra
 include(joinpath(@__DIR__,"conical_jfo.jl"))
 include(joinpath(@__DIR__,"conical_jfo_mms.jl"))

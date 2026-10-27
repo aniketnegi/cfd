@@ -1,5 +1,4 @@
 # Record or compare every returned mesh field and the exact VTK bytes.
-# Run the same script at the source checkpoint and after a structural refactor.
 using SHA, Serialization, TOML, Test
 include(joinpath(@__DIR__, "../../bearing.jl"))
 include(joinpath(@__DIR__, "../2d/grid.jl"))

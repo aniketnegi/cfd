@@ -27,7 +27,7 @@ function run_axial_targets(out)
     meta=Dict{String,Any}("case"=>cfg,"status"=>"running","source_sha256"=>hashes,
         "prior_states_sha256"=>bytes2hex(sha256(read(prior))),"julia_version"=>string(VERSION),
         "julia_threads"=>Threads.nthreads(),"startup_blas_interface_threads"=>BLAS.get_num_threads(),
-        "thread_note"=>"Interface count is not proof of serial native execution; previous run used additional native workers",
+        "thread_note"=>"BLAS interface count does not measure all native worker threads",
         "root_selection"=>"First sign bracket per target and mesh; no uniqueness claim",
         "scope"=>"Formal steady model only. Large-gap thin-film/inertia validity and dynamic stability NOT established",
         "flow_definitions"=>"Gross rim exchange is not pump-line injection/return; source decomposition unavailable")

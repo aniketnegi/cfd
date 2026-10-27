@@ -19,7 +19,7 @@ for name in outputs:
         raise SystemExit(f'refusing to overwrite plot evidence: {out / name}')
 rows = list(csv.DictReader((out / 'comparison.tsv').open(), delimiter='\t'))
 kinds = ('original', 'frozen', 'controlled')
-labels = ('Previous harmonic transition', 'Frozen old layout: control', 'Controlled placement + fixed blocks')
+labels = ('Harmonic transition', 'Fixed-map subdivision control', 'Controlled placement + fixed blocks')
 colours = ('#b33b35', '#807b75', '#087e8b')
 
 def patch(kind, level):

@@ -1,4 +1,4 @@
-# Experimental conservative multi-point surface FV. Production solver untouched.
+# Experimental conservative multi-point surface finite volumes.
 include(joinpath(@__DIR__,"mesh.jl"))
 include(joinpath(@__DIR__,"../../simulation/reynolds/conical_equilibrium.jl"))
 

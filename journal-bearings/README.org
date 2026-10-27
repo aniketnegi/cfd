@@ -2,51 +2,83 @@
 #+startup: content
 #+options: toc:2 num:nil
 
-Hydrodynamic lubrication models for cylindrical and conical journal bearings.
-Journal rotation drives lubricant through a clearance that narrows and widens
-around the circumference, producing pressure that can support a load.
+Julia geometry, surface meshes and reduced lubrication models for cylindrical
+and conical journal bearings. The shared =mesh/2d/= mesher builds periodic
+quadrilateral housing surfaces, unported or fitted around a circular +Y inlet.
+Zero semi-cone angle gives a cylinder.
 
-This project builds numerical models of that film, beginning with geometry and
-meshing before moving to reduced lubrication models and full three-dimensional
-CFD. The shared surface mesher in =mesh/2d/= supports cylindrical and conical
-bearings; a zero semi-cone angle gives a cylinder.
+The Reynolds solvers cover signed full film, mass-conserving cavitation and
+rigid load-balance calculations on uniform grids. They do not consume fitted
+meshes or implement thermal flow or elasticity. The named simulation CLI
+supports *unported cylinders only*. Gmsh volume-mesh experiments live in =expts/=;
+they are separate from the surface mesher and Reynolds solvers.
 
-* Approach
+* Setup and documentation
 
-I use Julia for geometry, direct surface grids, and reduced numerical models.
-Gmsh supports the three-dimensional mesh experiments. OpenFOAM handles full
-three-dimensional flow models.
+Run commands from =journal-bearings/=:
 
-The main questions are how clearance, eccentricity, speed, load, lubricant, and
-bearing shape affect pressure, load capacity, cavitation, heat transfer, and
-stability. Reduced and three-dimensional models use common geometry and
-operating conditions so their predictions can be compared with each other and
-with published experimental and numerical results.
+#+begin_src sh
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+#+end_src
 
-* Generate a 2D housing surface grid
+- [[file:mesh/2d/README.md][Surface meshing]]: API, units, acceptance and examples.
+- [[file:simulation/reynolds/README.md][Reynolds models]]: equations, checks and commands.
+- [[file:docs/solver-support.md][Solver support]]: mesh compatibility and known integration limits.
+- [[file:docs/gangrade-reference.md][Gangrade reference]]: published inputs and comparison limits.
 
-From =journal-bearings/=, run (all lengths in mm):
+Numerical verification is not experimental validation. Signed negative pressure
+is not cavitation; the Gangrade pressure comparison is not fully matched.
+
+* Named cylindrical case
 
 #+begin_src sh
 julia --project=. mesh/2d/generate.jl \
-  --geometry unported --journal-radius-mm 50 --length-mm 100 \
-  --clearance-mm 0.05 --cone-angle-deg 10 --eccentricity-ratio 0.6 \
-  --n-theta 512 --n-axial 256 --output out/my-unported.vtk
+  --experiment demo-cylinder --geometry unported \
+  --journal-radius-mm 50 --length-mm 100 --clearance-mm 0.05 \
+  --cone-angle-deg 0 --eccentricity-ratio 0.6 \
+  --n-theta 128 --n-axial 64
+julia --project=. simulation/reynolds/run.jl \
+  --experiment demo-cylinder --run vg32-2000rpm \
+  --rpm 2000 --viscosity-pa-s 0.02752 --sweep
 #+end_src
 
-Use =--cone-angle-deg 0= for a cylindrical surface; nonzero angles produce
-cones. Both use the shared =mesh/2d/= implementation and acceptance checks.
+Geometry lengths are mm; dynamic viscosity is Pa·s. These are illustrative
+inputs, not a measured operating point.
 
-Use =--geometry surface-feed= with =--feed-diameter-mm 5 --feed-z-mm 50= to
-fit land quads around a +Y drilling and export its rim, not a feed-cell mask
-or a resolved 3D passage. Supply a fresh =--output FILE=; named fitted cases
-remain unsupported by the external case loader. Requested dimensions and
-background counts are used directly; unavailable transitions or failed
-acceptance checks reject rather than silently substitute another mesh.
-The 5 mm opening is a project example, not a documented Gangrade dimension.
+The mesh command creates =out/cases/demo-cylinder/{mesh.vtk,experiment.toml}=.
+The simulation writes =runs/vg32-2000rpm/= beneath that case, containing
+=run.toml=, =full-film.vtk=, =diagnostics.toml= and =convergence.tsv=.
+The mesh checksum is verified on every simulation invocation.
 
-See [[file:mesh/2d/README.md][surface meshing API, units, acceptance and examples]].
-Run =julia --project=. mesh/tests/runtests.jl= for the complete mesh suite,
-including cylindrical unported/fitted generation and fresh-process CLI checks.
-Use =--help= or =-h= for options; long options accept =--name VALUE= or
-=--name=VALUE=. Generation solves no fluid equation.
+To rerun identical saved inputs, use =--experiment demo-cylinder --run
+vg32-2000rpm --replace=; add =--sweep= to regenerate the sweep. Different
+operating inputs require a different run name; different geometry or counts
+require a different experiment name.
+
+* Standalone fitted surface
+
+#+begin_src sh
+julia --project=. mesh/2d/generate.jl \
+  --geometry surface-feed --journal-radius-mm 50 --length-mm 100 \
+  --clearance-mm 0.05 --cone-angle-deg 10 --eccentricity-ratio 0.6 \
+  --n-theta 128 --n-axial 64 --feed-diameter-mm 5 --feed-z-mm 50 \
+  --output out/inlet.vtk
+#+end_src
+
+The output path must be fresh. Fitted exports contain land quads and explicit
+rim edges, not a =feed_cells= mask or a 3D passage. Counts size the background;
+the final cell count differs. Unsupported transitions or failed quality/stability
+checks reject the request. The 5 mm diameter is a project example, not a
+reported Gangrade dimension.
+
+=--output= and =--experiment= are mutually exclusive. Named fitted cases are
+unsupported. Both CLIs provide =--help= / =-h= and accept =--name VALUE= or
+=--name=VALUE=.
+
+* Tests
+
+#+begin_src sh
+julia --project=. mesh/tests/runtests.jl
+#+end_src
+
+Solver test commands are listed in [[file:simulation/reynolds/README.md][simulation/reynolds/README.md]].

@@ -1,4 +1,4 @@
-"""Re-render unchanged data without raster anti-aliasing cracks between cells."""
+"""Render saved fields without raster anti-aliasing cracks between cells."""
 from pathlib import Path
 import hashlib
 import json

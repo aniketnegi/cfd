@@ -61,7 +61,7 @@ if field.exists():
         fig.colorbar(sc,ax=ax,label=title)
     fig.suptitle('Finest fixed-seat radial equilibrium: c = 50 µm; NOT simultaneous axial equilibrium\nActual exported land-cell polygons; reservoir interior omitted')
     fig.savefig(dest/'fixed-seat-fields.png',dpi=150,bbox_inches='tight');plt.close(fig)
-html='<!doctype html><meta charset="utf-8"><title>Fitted inlet load balance</title><style>body{max-width:1500px;margin:2em auto;font:18px sans-serif;line-height:1.4}img{width:100%}</style><h1>5 mm fitted-inlet load continuation</h1><p>Radial equilibrium at prescribed axial positions. A free-axial equilibrium requires all three residuals to close. A missing sign crossing at sampled points is not a global nonexistence or stability result. Supply, viscosity, loads and mouth diameter are unchanged.</p>'
+html='<!doctype html><meta charset="utf-8"><title>Fitted inlet load balance</title><style>body{max-width:1500px;margin:2em auto;font:18px sans-serif;line-height:1.4}img{width:100%}</style><h1>5 mm fitted-inlet load continuation</h1><p>Radial equilibrium at prescribed axial positions. A free-axial equilibrium requires all three residuals to close. A missing sign crossing at sampled points is not a global nonexistence or stability result.</p>'
 for name in outputs[:3]:
     if (dest/name).exists():html+=f'<h2>{name[:-4]}</h2><a href="{name}"><img src="{name}"></a>'
 html+='<h2>Actual pressure/content/gap exports</h2><ul>'

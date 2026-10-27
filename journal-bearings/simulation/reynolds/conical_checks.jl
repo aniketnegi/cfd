@@ -160,7 +160,7 @@ end
 end
 
 @testset "Rotating eccentric cone manufactured solution" begin
-    # Review regression: the centred MMS above has no wedge source and constant h.
+    # The centred MMS above has no wedge source and constant h.
     # Exercise nonzero Couette forcing AND variable h^3 in both coordinates.
     # All derivatives below are analytic, independent of the assembly stencil.
     p = cone()

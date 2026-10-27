@@ -195,8 +195,8 @@ EVERY node's physical path length is at most movement_tolerance times its
 original shortest incident physical edge. Windows do not overlap; backtracking
 and back-and-forth movement cannot fake accumulated progress. The gradient is
 diagnostic, not a compulsory practical-success test. An exact stationary state
-needs no fictitious window. stability_steps=0 explicitly selects the historical
-fixed-budget/gradient stopping mode for diagnostics, not public mesh acceptance.
+needs no fictitious window. stability_steps=0 selects fixed-budget/gradient
+stopping for diagnostics, not public mesh acceptance.
 """
 function controlled_layout(mesh; max_iterations::Int=DEFAULT_MAX_ITERATIONS, trace_iterations=(),
     observer=nothing, observe_every::Int=25,
@@ -207,7 +207,7 @@ function controlled_layout(mesh; max_iterations::Int=DEFAULT_MAX_ITERATIONS, tra
     stability_steps >= 0 || throw(ArgumentError("stability_steps must be nonnegative"))
     isfinite(movement_tolerance) && movement_tolerance > 0 ||
         throw(ArgumentError("movement_tolerance must be positive and finite"))
-    # The 5 mm reference normalizes the existing numerical step/tolerance
+    # The 5 mm reference normalizes numerical step/tolerance
     # settings; it does not fix the actual inlet diameter.
     diameter_scale = mesh.inlet_radius_m / 0.0025
     gradient_tolerance = 1e-5
@@ -247,7 +247,7 @@ function controlled_layout(mesh; max_iterations::Int=DEFAULT_MAX_ITERATIONS, tra
             termination_reason = stability_steps == 0 ? :gradient_tolerance : :stationary
             break
         elseif stability_steps == 0 && norm(gradient) * diameter_scale < gradient_tolerance
-            # Explicit historical fixed-budget/diagnostic mode, not public acceptance.
+            # Fixed-budget diagnostic mode, not public acceptance.
             termination_reason = :gradient_tolerance
             break
         end

@@ -106,8 +106,7 @@ function load_experiment(name; cases_root=DEFAULT_CASES_ROOT)
     elseif haskey(data, "feed")
         throw(ArgumentError("unported experiment has feed parameters in $path"))
     end
-    # Absent layout identifies the historical schema-1 representation. Do not
-    # relabel saved stair-stepped masks as fitted just because defaults changed.
+    # Schema 1 defaults to a rectangular grid or cell-centre feed mask.
     layout = get(grid, "layout", variant == "surface-feed" ? "cell-centre-mask" : "periodic-rectangular")
     layout in ("periodic-rectangular", "cell-centre-mask", "controlled-fitted-land-v1") ||
         throw(ArgumentError("unsupported mesh layout in $path"))
@@ -115,7 +114,7 @@ function load_experiment(name; cases_root=DEFAULT_CASES_ROOT)
         throw(ArgumentError("mesh layout and geometry variant disagree in $path"))
     if variant == "surface-feed" && layout == "cell-centre-mask"
         !haskey(data["feed"], "representation") ||
-            throw(ArgumentError("historical masks must not declare a fitted rim representation"))
+            throw(ArgumentError("cell-centre masks must not declare a fitted rim representation"))
     end
     if layout == "controlled-fitted-land-v1"
         for key in ("surface_cells", "nodes", "feed_rim_edges")

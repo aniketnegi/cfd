@@ -73,7 +73,7 @@ Build the initial cone mesh around a +Y circular drilling. Bearing dimensions,
 diameter and axial position use mm. The patch count follows physical background
 spacing; layers retain the chosen nine-to-eight layer/patch ratio.
 
-The opening must fit between the ends and leave room for the unchanged ring
+The opening must fit between the ends and leave room for the ring
 and smoothing construction. Invalid requests are rejected, not moved or resized.
 """
 function reference_seed(parameters::BearingParameters, n_theta::Int, n_axial::Int;
@@ -146,7 +146,7 @@ function reference_seed(parameters::BearingParameters, n_theta::Int, n_axial::In
     for (node, position) in enumerate(background.nodes)
         i = mod1(node, n_theta)
         j = (node - 1) ÷ n_theta + 1
-        # Keep patch perimeter vertices, but remove its old interior vertices.
+        # Keep patch perimeter vertices; remove its interior vertices.
         if !(start_i < i < start_i + patch_cells && start_j < j < start_j + patch_cells)
             push!(surface_nodes, position)
             retained_ids[node] = length(surface_nodes)

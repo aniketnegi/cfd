@@ -1,7 +1,7 @@
 # Rigid, steady, Newtonian, isoviscous conical Reynolds verification ONLY.
 # Signed full film: no cavitation, central feed, elasticity or load equilibrium.
 # Derivation and approximation choices: conical-formulation.md.
-# Reuse the existing geometry/VTK helpers without modifying the cylinder solver.
+# Geometry and VTK dependencies are loaded through cylindrical.jl.
 include(joinpath(@__DIR__, "cylindrical.jl"))
 
 # All helpers below use SI metres; BearingParameters stores millimetres.

@@ -1,10 +1,10 @@
-# 2D periodic conical mass-conserving cavitation checkpoint
+# 2D periodic conical mass-conserving cavitation
 
 ## What is implemented
 
-`conical_jfo.jl` now solves steady rigid, isothermal, incompressible Newtonian
+`conical_jfo.jl` solves steady rigid, isothermal, incompressible Newtonian
 pressure **and liquid content** around the circumference and along the cone.
-It adds cavitation to the previously checked conical surface formulation;
+It uses the [conical surface formulation](conical-formulation.md);
 it is not a stack of independent slider calculations.
 
 **Numerical verification only.** The saved example uses an intentionally broad
@@ -13,23 +13,16 @@ opening. No physical VG32 cavitation pressure, experimental supply condition,
 load equilibrium, thermal model or elasticity has been selected by this test.
 No new published Gangrade evidence is claimed.
 
-A subsequent separate [floating-bush driver](conical-equilibrium.md) adds
-load-equilibrium attempts using JFO; radial balance succeeds but joint axial
-balance remains unresolved. Its optional eccentricity orientation rotates the
-gap relative to a fixed housing mesh/feed, retaining zero as the earlier default.
+The [floating-bush driver](conical-equilibrium.md) uses this solver for rigid
+force balance. `eccentricity_angle_rad` rotates the gap relative to the fixed
+housing mesh/feed; its default is zero (+X).
 
-The signed cylinder/cone defaults and named `run.jl` interface remain unchanged.
-The 1D slider's active-set loop was extracted, without changing its algorithm,
-into `jfo_active_set.jl`; both assemblies now use it. All 149 published-slider
-checks pass with exactly the previous six-grid error values. Existing slider
-and full-film evidence was not overwritten. New slider evidence manifests
-also include the shared kernel's hash; old manifests describe their historical
-source versions.
+`jfo_active_set.jl` supplies the pressure/void active-set kernel shared with
+the [1D slider](jfo-slider.md). The two solvers have separate flux assemblies.
 
 ## Equations and supply contract
 
-Coordinates, cone radii, normal-gap approximation and nominal wall speed are
-unchanged from [conical-formulation.md](conical-formulation.md):
+Coordinates, cone radii, normal-gap approximation and nominal wall speed follow [conical-formulation.md](conical-formulation.md):
 `z=0` large end, positive theta about +Z, `ds=dz/cos(alpha)`,
 `Utheta=omega*rj(z)`, `Us=0`. Geometry/VTK lengths are mm; the solver uses SI.
 
@@ -108,15 +101,12 @@ are saved, so roundoff balances cannot be mistaken for discretization errors.
 
 ## Verification, not a published 2D benchmark match
 
-**171 conical-JFO assertions pass**, alongside 149 slider, 136 signed-cone and
-22 signed-cylinder assertions: **478 total** in these four suites.
-
 Checks cover:
 
 - Arbitrary pressure/content fields: matrix residual versus independently
   reconstructed face divergence; periodic seam and row-wise transport conservation.
 - Full-film reduction at 0°, 10° and 30°, with stationary and rotating walls;
-  agreement with the unchanged signed solver when its pressure stays positive.
+  agreement with the signed solver when its pressure stays positive.
 - Independent centred stationary cone log-radius pressure solution.
 - A genuinely 2D manufactured cavitating field, for **both** rotation signs.
 - Pressure-reference shifts, speed/viscosity scaling, reflection under rotation
@@ -169,8 +159,8 @@ This separately tests the public solver without manufactured forcing:
 
 - 50 mm mean journal radius, 100 mm axial length, 50 µm radial clearance,
   10° semi-cone, prescribed e/c=0.6 along +X.
-- 2000 rpm, mu=0.02752 Pa·s, matching the earlier nominal-property numerical
-  reference, not a measured operating-temperature oil.
+- 2000 rpm, mu=0.02752 Pa·s, an illustrative nominal-property reference,
+  not a measured operating-temperature oil.
 - Numerical p_cav=0 and both axial ends at zero; pressure reservoir at
   0.5 MPa over **45° < theta < 135°, 37.5 < z < 62.5 mm**.
 - This intentionally coarse-friendly rectangle is **not** the 5 mm port,
@@ -187,8 +177,7 @@ Fine fields are area-averaged onto coarse cells before comparison. This is
 **self-convergence**, not error against a continuum oracle. It is slower than
 the smooth manufactured pressure convergence: content fronts and prescribed
 pressure cells affect it. Net feed still changes **2.16%** on the last
-refinement; do not call oil consumption grid-independent. No mesh tuning was
-performed to hide that limitation.
+refinement; oil consumption is not grid-independent.
 
 At 256×128: net end outflow and net feed agree with normalized imbalance
 4.16e-14; maximum free-cell residual is 1.01e-20 m³/s. There are 11,350 cells
@@ -221,12 +210,8 @@ four check/regression logs. Julia 1.13.2. Existing runs are refused; pass a
 fresh output directory to the verification script and then the plot script to
 repeat. NumPy/Matplotlib are needed only for the optional plot.
 
-## Next physical checkpoint
+## Physical scope
 
-The numerical cone extension is now in place. Review the reservoir/port
-representation, feed pressure or flow, cavitation pressure and oil properties
-before choosing the physical baseline. Then add loaded-body-consistent load
-equilibrium and check it, before elasticity. The [supply/inventory and force
-warnings](../../docs/conical-solver-review.md) still apply. This test does not
-settle experimental axial restraint or justify transferring a published end
-pressure onto the rig's central feed.
+The artificial reservoir does not specify a rig port, experimental axial
+restraint or lubricant cavitation pressure. These must be explicit physical
+inputs for a bearing prediction. See [Gangrade reference limits](../../docs/gangrade-reference.md).

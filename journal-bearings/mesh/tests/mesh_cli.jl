@@ -107,16 +107,15 @@ const BASE_ARGS = ["--geometry", "unported", "--journal-radius-mm", "50",
         end
         @test_throws ArgumentError load_experiment("trial-a"; cases_root=cases)
 
-        # The mesher's direct layout is newer than the external manifest loader.
-        # Reject this combination before creating an output directory.
+        # The case loader does not support fitted-land-direct-v1.
+        # Reject the request before creating an output directory.
         named_feed = vcat(["--geometry", "surface-feed"], BASE_ARGS[3:end],
                          ["--experiment", "trial-feed", "--n-theta", "128", "--n-axial", "64",
                           "--feed-diameter-mm", "5", "--feed-z-mm", "50"])
         @test_throws ArgumentError main(named_feed; cases_root=cases)
         @test !ispath(joinpath(cases, "trial-feed"))
 
-        # Historical schema-1 masks remain identifiable, never reinterpreted
-        # as fitted meshes merely because the generator default changed.
+        # Schema-1 manifests without a layout identify cell-centre masks.
         legacy_dir = joinpath(cases, "legacy-mask"); mkdir(legacy_dir)
         legacy_grid = housing_grid(cfg.p,128,64)
         write_vtk(joinpath(legacy_dir,"mesh.vtk"),legacy_grid;feed_cells=falses(length(legacy_grid.quads)))

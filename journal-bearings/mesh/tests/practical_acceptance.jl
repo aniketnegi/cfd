@@ -66,8 +66,7 @@ end
 end
 
 @testset "Wide inlet support cannot move the periodic seam" begin
-    # 4D exceeds R*pi/2 here: the previous distance-only selection incorrectly
-    # included 59 seam vertices, even though the inlet transition is available.
+    # The 4D movement halo reaches the seam; seam vertices must stay fixed.
     p=BearingParameters(journal_midpoint_radius=20.,bearing_length=70.,
         radial_clearance=.05,semicone_angle_deg=0.,eccentricity_ratio=.6)
     seed=ControlledSurfaceInlet.reference_seed(p,128,64;feed_diameter=8.,feed_z=35.)

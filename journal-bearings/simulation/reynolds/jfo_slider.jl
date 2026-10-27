@@ -1,5 +1,5 @@
 # Steady 1D rigid/isoviscous/incompressible JFO verification solver.
-# This does NOT yet extend conical.jl, prescribe a bearing supply or solve EHD.
+# The slider assembly is separate from the bearing solvers.
 # See jfo-slider.md for source, flux, boundary and complementarity conventions.
 include(joinpath(@__DIR__,"jfo_active_set.jl"))
 

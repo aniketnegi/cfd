@@ -1,9 +1,5 @@
-# Historical fixed-mesh fluid regression, not a current mesh acceptance test.
-# Its reference forces/flows predate the area/centroid correction. They have not
-# been rebaselined for current meshes. A separate fluid review is required.
-# Retained with its owning fluid experiment, outside the mesher test suite.
-# Do not rebaseline these values without a separate fluid-validation review.
-# This script loads the retained experimental operator and Gmsh.
+# Fixed-mesh force/flow references are not verified for the public mesher.
+# Excluded from mesh/tests/runtests.jl; loads the experimental operator and Gmsh.
 using Test
 
 module CurrentMesh

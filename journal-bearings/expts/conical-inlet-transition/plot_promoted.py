@@ -44,7 +44,7 @@ for ax, limits, title in zip(axes, ((-15, 15), (-10, -3)),
            xlabel='X across mouth [mm]', ylabel='z − midpoint [mm]')
 fig.colorbar(pc, ax=axes, label='Surface corner score — NOT Hex8 OQ', shrink=.8)
 fig.suptitle(f'Public surface-feed export: {nland:,} land quads + {nrim} inlet edges\n'
-             'Controlled fitted geometry is now the default; no stair-stepped mask')
+             'Fitted land polygons and inlet rim')
 output.parent.mkdir(parents=True, exist_ok=True)
 fig.savefig(output, dpi=170)
 plt.close(fig)

@@ -1,4 +1,4 @@
-# One case-specific surface candidate. Reuse the old layout, not its Hex8 sweep.
+# Case-specific surface mesh using the surface-inlet quad layout without extrusion.
 module RetainedInletSurface
 include(joinpath(@__DIR__,"../surface-inlet-hex/mesh.jl"))
 end

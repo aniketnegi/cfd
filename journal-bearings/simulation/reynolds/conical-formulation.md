@@ -1,21 +1,18 @@
 # Conical full-film formulation and numerical verification
 
-This checkpoint implements **rigid, steady, incompressible, Newtonian,
+`conical.jl` implements **rigid, steady, incompressible, Newtonian,
 isoviscous, signed full-film Reynolds flow**. It does not implement cavitation,
 a localized feed, elastic deformation or load equilibrium. Negative pressures
 are retained only for numerical verification. These results must not be used
 as physical load capacity, oil consumption or a Gangrade reproduction.
 
-A subsequent [source-and-test review](../../docs/conical-solver-review.md)
-added a rotating eccentric manufactured solution and matrix/boundary checks.
-It found no blocking defect within this model, but requires explicit liquid
-replenishment for JFO and a clear loaded-body convention for equilibrium.
-A journal-load convention needs a separate journal-force calculation.
+The returned force acts on the housing. A journal-load convention requires a
+separate journal-force calculation.
 
 The derivation below is our dimensional surface-flux formulation, not a claim
 to have recovered Gangrade's Fortran or Fluent implementation. His paper's
 pressure-boundary inconsistency is not used to define this numerical test.
-See [the literature audit](../../docs/gangrade-paper-audit.md).
+See [the reference inputs and limits](../../docs/gangrade-reference.md).
 
 ## Coordinates, gap and approximation choices
 
@@ -69,9 +66,6 @@ kinematics. In particular, retaining a geometric correction in `g` does not
 make the entire model higher-order accurate. No validity claim for inertia,
 thermal effects or the experimental operating regime follows from these tests.
 
-These conventions are implemented for this verification checkpoint; physical
-case assumptions and axial seating still need review before load comparison.
-
 ## Surface metric and conservative equation
 
 Meridional distance satisfies `ds=dz/cos(alpha)`. Surface distances and area are
@@ -120,10 +114,9 @@ are derived here; they are not independent published conical validation data.
 
 ## Discretization and boundary conditions
 
-`conical.jl` uses the existing uniform periodic theta–z housing grid with
-cell-centred pressure. Its assembly is separate from the unchanged
-`solve_cylindrical_full_film`; the file includes `cylindrical.jl` to reuse its
-existing geometry and VTK helpers without a shared-code rewrite.
+`conical.jl` uses a uniform periodic theta–z housing grid with cell-centred
+pressure. Its assembly is separate from `solve_cylindrical_full_film`;
+`cylindrical.jl` supplies geometry and VTK dependencies.
 
 For each circumferential face, evaluated at the face centre:
 
@@ -143,8 +136,8 @@ The same face flux belongs to both adjacent cells. Circumferential neighbours
 wrap across the seam. End pressures are prescribed **at the physical faces**;
 the distance to the first/last pressure cell is half a cell, doubling the
 boundary conductance. End-pressure order is `(z=0, z=L)`, in Pa gauge.
-The default is `(0,0)`. Nonzero ends exist for numerical tests and later
-hypothesis diagnostics, not as an approved replacement for the rig's port.
+The default is `(0,0)`. Nonzero ends prescribe end reservoirs; they do not
+represent a localized feed port.
 
 Assembly produces `A*p=b`, solved with Julia SparseArrays/SuiteSparse.
 Diagnostics independently reconstruct cell continuity from returned face
@@ -216,17 +209,24 @@ assembled operator with that artificial cell source. The source exists only
 in the test, not in the physical solver interface. This tests both cone
 metric terms together against a known two-dimensional pressure field.
 
+### Rotating eccentric manufactured solution
+
+For `p=P sin(theta) z(L-z)/L²`, e/c=0.6, alpha=10° and rpm=±2000,
+the tests analytically differentiate the eccentric gap, diffusion coefficients
+and Couette source independently of the discrete stencil. Relative pressure
+errors decrease approximately fourfold per grid doubling; on 256×128 they
+are 1.76e-4 and 1.29e-4 for positive and negative rotation.
+
 ### Other checks
 
-- Zero-angle field agrees with the existing cylinder; small-angle continuity.
-- Stationary equal-pressure state is constant; centred rotation generates no
-  pressure above equal ambient reservoirs.
-- Rotation reversal, viscosity scaling, constant pressure-offset invariance
-  of flows and periodic mass conservation.
-- Eccentric rotating-cone pressure and housing-force self-convergence.
+- Zero-angle agreement with the cylinder and small-angle continuity.
+- Stationary constant pressure and reversed end-pressure flow.
+- Pressure-matrix symmetry, positive energy and maximum principle.
+- Rotation reversal, viscosity scaling and pressure-offset invariance of flow.
+- Housing-force integrals and pressure/force self-convergence.
 - Invalid inputs, scalar field sizes and VTK normal-gap output.
 
-## Commands and retained evidence
+## Commands and numerical results
 
 From `journal-bearings/`:
 
@@ -253,24 +253,14 @@ out/cases/conical-unported-e0p6/runs/full-film-verification-vg32-40c/
   full-film.vtk
 ```
 
-It refuses to overwrite that directory. To repeat, explicitly archive/move the
-old run first. `verification.toml` records inputs, source/mesh hashes,
+It refuses to overwrite that directory. To repeat, move the existing run first. `verification.toml` records inputs, source/mesh hashes,
 completion status and diagnostics. It is deliberately not a general-run
 `run.toml`; the existing `run.jl` CLI remains cylindrical-only. VTK coordinates
 and radial gaps remain in mm; `normal_gap_m` is in metres and pressure in Pa.
 
 The demonstration uses assumed 2000 rpm and nominal ISO VG 32 at 40 °C:
 `nu=32e-6 m²/s`, separately assumed `rho=860 kg/m³`, hence `mu=0.02752 Pa·s`.
-It does not establish the rig's oil temperature or density. This extends the
-existing verification reference, not a new experimental operating decision.
-
-Initial evidence on Julia 1.13.2: **123 conical assertions passed**, as did the
-existing cylindrical solver (22), named-run interface (22), mesh CLI (25)
-and mesh geometry checks. That initial test output is retained beside the run
-as `conical-checks.log`. The subsequent review expanded the suite to **136
-passing assertions**; its log is `out/reviews/conical-solver/checks.log`.
-See [the review](../../docs/conical-solver-review.md) for the additional rotating,
-eccentric manufactured solution and deliberate-defect detection tests.
+It does not establish the rig's oil temperature or density.
 
 Numerical results:
 
@@ -296,10 +286,8 @@ GAUGE**: the negative branch and the signed force above are deliberately
 nonphysical verification outputs. The approximately zero axial force in this
 antisymmetric signed solution does not show that a cavitating cone cannot
 carry axial load. The prescribed offset is not the equilibrium for 1000 N.
-No comparison with Gangrade's measured pressure has yet been performed.
+These signed fields are not a comparison with Gangrade's measured pressure.
 
-The source-and-test review is complete for this numerical checkpoint. Next:
-add and independently verify mass-conserving cavitation with an explicit
-liquid-supply/inventory contract before localized-feed and load-equilibrium
-comparisons. Ambient ends alone do not guarantee replenishment if the
-cavitation pressure is also ambient and axial Couette transport is absent.
+For cavitation with an explicit supply contract, see [conical JFO](conical-jfo.md).
+Ambient ends alone do not guarantee replenishment when cavitation pressure is
+also ambient and axial Couette transport is absent.

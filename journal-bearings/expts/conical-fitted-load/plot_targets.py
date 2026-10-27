@@ -25,7 +25,7 @@ for r in targets:
 axes[0].set(ylabel='Axial film force [N]');axes[1].set(ylabel='Eccentricity / operating clearance')
 for ax in axes:ax.set(xlabel='Operating radial clearance [µm]');ax.grid(alpha=.2)
 axes[0].legend(fontsize=8)
-fig.suptitle('1000 N radial load; 500/750/1000 N axial targets; unchanged 0.5 MPa mouth pressure\nFormal model only: physical validity/stability unverified; level2 markers show only computed samples')
+fig.suptitle('1000 N radial load; 500/750/1000 N axial targets; 0.5 MPa mouth pressure\nFormal model only: physical validity/stability unverified; level2 markers show only computed samples')
 fig.savefig(dest/names[0],dpi=170,bbox_inches='tight');plt.close(fig)
 fig,axes=plt.subplots(2,2,figsize=(12,8),layout='constrained')
 for l,col in ((1,'#70aaa7'),(2,'#193e60')):

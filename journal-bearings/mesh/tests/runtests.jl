@@ -1,5 +1,5 @@
 # Each suite gets a fresh Julia process: source includes and test globals cannot
-# leak between suites. Fluid experiments and historical snapshots are separate.
+# leak between suites. Fluid experiments and snapshot comparisons are separate.
 using Test
 
 const suites = (

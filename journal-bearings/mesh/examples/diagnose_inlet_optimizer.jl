@@ -258,7 +258,6 @@ function diagnose_optimizer(directory; name="reference", budget=720)
     initial = ControlledSurfaceInlet.reference_seed(p,g.n_theta,g.n_axial;
         feed_diameter=g.diameter,feed_z=g.feed_z)
     selection = ControlledSurfaceInlet.macro_data(initial)
-    # Request all late steps of the original coarse failure, plus common budgets.
     result = ControlledSurfaceInlet.controlled_layout(initial;max_iterations=budget,stability_steps=0,
         trace_iterations=(1,360,665,666,budget))
     serialize(joinpath(directory,"trace.bin"), result.trace)

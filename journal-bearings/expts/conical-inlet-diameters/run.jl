@@ -140,7 +140,7 @@ function diameter_geometry(out)
     push!(sources,"expts/surface-inlet-hex/mesh.jl")
     meta=Dict("diameters_mm"=>collect(DIAMETERS),"levels"=>[1,2,4],
         "status"=>"Geometry and manufactured-field study; no physical diameter/load tuning or equilibrium",
-        "recipe"=>"Same q=8, outer layers=9, background128x64; patch half-width1.5D, halo4D, max placement step0.04D; inverse-Hessian and gradient scales follow D/5; weights/cap unchanged",
+        "recipe"=>"q=8, outer layers=9, background128x64; patch half-width1.5D, halo4D, max placement step0.04D; inverse-Hessian and gradient scales follow D/5",
         "area_weight"=>.25,"area_anchor_weight"=>.01,"placement_iteration_cap"=>180,
         "minimum_corner_bound"=>.9,"minimum_alignment_bound"=>.9,"maximum_area_ratio_bound"=>2.,
         "geometry_export_eccentricity_ratio"=>0.,"radial_clearance_m"=>50e-6,"minimum_normal_gap_m"=>50e-6*cosd(10.),

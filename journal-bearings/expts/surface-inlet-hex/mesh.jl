@@ -87,7 +87,7 @@ The drilling cylinder is directed along +Y.
 Its circular rim is filled by a square core and annular quadrilaterals, then
 connected to the ordinary periodic bearing grid by transition rings.
 
-Default construction is unchanged. `patch_half_width` fixes the replaced patch's
+`patch_half_width` fixes the replaced patch's
 axial half-width and circumferential arc half-width at the inlet centre, while
 counts control resolution. Its outer support has twice that half-width.
 With `nothing`, patch dimensions still follow the uniform background grid.
@@ -421,7 +421,7 @@ end
 
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # One review mesh. Lengths are millimetres.
+    # Example mesh. Lengths are millimetres.
     p = BearingParameters(
         journal_midpoint_radius = 50.0,
         semicone_angle_deg = 10.0,
