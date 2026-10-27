@@ -3,7 +3,7 @@
 using Test
 
 const suites = (
-    "practical_acceptance", "inlet_telemetry", "meshing", "mesh_cli",
+    "practical_acceptance", "inlet_telemetry", "meshing", "mesh_cli", "cylindrical",
     "inlet_counts", "inlet_geometry", "chart_geometry", "radial_geometry",
     "examples", "inlet_iterations", "inlet_diagnosis",
 )

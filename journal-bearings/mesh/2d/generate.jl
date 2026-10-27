@@ -1,15 +1,15 @@
-# Command-line entry point for the conical housing surface grids (lengths in mm).
-include(joinpath(@__DIR__, "../../../bearing.jl"))
+# Command-line entry point for cylindrical/conical housing surfaces (lengths in mm).
+include(joinpath(@__DIR__, "../../bearing.jl"))
 include(joinpath(@__DIR__, "grid.jl"))
 include(joinpath(@__DIR__, "surface_feed.jl"))
-include(joinpath(@__DIR__, "../../vtk.jl"))
-include(joinpath(@__DIR__, "..", "..", "..", "experiment.jl"))
+include(joinpath(@__DIR__, "../vtk.jl"))
+include(joinpath(@__DIR__, "..", "..", "experiment.jl"))
 
 const USAGE = """NAME
-    generate.jl - generate a conical housing surface grid
+    generate.jl - generate a cylindrical or conical housing surface grid
 
 SYNOPSIS
-    julia --project=. mesh/2d/conical/generate.jl [OPTION]...
+    julia --project=. mesh/2d/generate.jl [OPTION]...
 
 DESCRIPTION
     Write a periodic Quad4 housing surface as VTK. All lengths are in mm.
@@ -169,7 +169,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     catch err
         if err isa ArgumentError
             println(stderr, "generate.jl: $(sprint(showerror, err))")
-            println(stderr, "Try 'julia --project=. mesh/2d/conical/generate.jl --help' for more information.")
+            println(stderr, "Try 'julia --project=. mesh/2d/generate.jl --help' for more information.")
             exit(2)
         end
         rethrow()

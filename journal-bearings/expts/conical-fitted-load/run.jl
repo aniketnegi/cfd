@@ -16,7 +16,7 @@ function run_continuation(out)
     @assert n["jfo_iteration_cap"]==150
     mkpath(out)
     sources=String["bearing.jl","Project.toml"]
-    for directory in ("mesh/2d/conical","simulation/reynolds","expts/conical-fitted-inlet",
+    for directory in ("mesh/2d","simulation/reynolds","expts/conical-fitted-inlet",
                       "expts/surface-inlet-hex","expts/conical-fitted-load")
         for (dir,_,files) in walkdir(joinpath(ROOT,directory)),file in files
             endswith(file,".jl") || endswith(file,".toml") || endswith(file,".py") || continue

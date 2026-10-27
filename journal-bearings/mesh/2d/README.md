@@ -1,8 +1,9 @@
-# Conical surface meshing
+# Cylindrical and conical surface meshing
 
-This builds periodic quadrilateral meshes on the housing surface, either
-unported or fitted around a circular +Y drilling. It does not build a 3D passage,
-validate fluid predictions, or claim a globally optimal node layout.
+This shared mesher builds periodic quadrilateral meshes on cylindrical or
+conical housing surfaces, either unported or fitted around a circular +Y drilling.
+It does not build a 3D passage, validate fluid predictions, or claim a globally
+optimal node layout.
 
 ## API
 
@@ -10,9 +11,9 @@ Run from `journal-bearings/`, with lengths in **mm**:
 
 ```julia
 include("bearing.jl")
-include("mesh/2d/conical/grid.jl")
-include("mesh/2d/conical/surface_feed.jl") # only needed for an inlet
-include("mesh/vtk.jl")                   # only needed for export
+include("mesh/2d/grid.jl")
+include("mesh/2d/surface_feed.jl") # only needed for an inlet
+include("mesh/vtk.jl")             # only needed for export
 
 p = BearingParameters(journal_midpoint_radius=50., bearing_length=100.,
     radial_clearance=.05, semicone_angle_deg=10., eccentricity_ratio=.6)
@@ -21,6 +22,10 @@ plain = housing_grid(p, 128, 64)
 fitted = surface_feed_grid(p, 128, 64; feed_diameter=5., feed_z=50.)
 write_vtk("out/inlet.vtk", fitted)
 ```
+
+Set `semicone_angle_deg=0.` for a cylinder; the same constructors, fitted-inlet
+placement and acceptance checks apply. Nonzero angles produce cones. The CLI
+uses `--cone-angle-deg 0` for a cylinder.
 
 Both grids expose `nodes`, `quads`, `radial_gaps`, `areas`, `n_theta`, `n_axial`,
 `quality` and `acceptance`. Cartesian points and gaps are mm; physical areas are
@@ -127,7 +132,7 @@ The +Y drilling direction is fixed; no passage pressure condition is prescribed.
 - `inlet/placement.jl`: L-BFGS, practical stopping and optional diagnostics.
 - `inlet/controlled.jl`: inlet defaults, construction and acceptance.
 - `surface_feed.jl`: public fitted mapping, physical areas and gaps.
-- `../../vtk.jl`: shared VTK exporter, separate from construction.
+- `../vtk.jl`: shared VTK exporter, separate from construction.
 - `generate.jl`: CLI input, construction and export.
 
 Load `bearing.jl`, then `grid.jl`, then the optional `surface_feed.jl`. They share
@@ -137,7 +142,7 @@ loads neither exporters, experimental operators, Gmsh nor fluid solvers.
 ## CLI and examples
 
 ```sh
-julia --project=. mesh/2d/conical/generate.jl \
+julia --project=. mesh/2d/generate.jl \
   --geometry surface-feed --journal-radius-mm 50 --length-mm 100 \
   --clearance-mm .05 --cone-angle-deg 10 --eccentricity-ratio .6 \
   --n-theta 128 --n-axial 64 --feed-diameter-mm 5 --feed-z-mm 50 \
@@ -167,17 +172,24 @@ julia --project=. mesh/tests/runtests.jl
 
 The runner executes each meshing suite in a fresh single-threaded Julia process,
 with bounds checking, so includes/globals cannot leak between suites. It covers
-CLI/export, requested counts, supplied geometry, independent chart/radius/chord
-oracles, analytic unported quality, actual motion windows, seam/boundary
+CLI/export (including cylindrical unported and fitted runs from an unrelated
+working directory), requested counts, supplied geometry, independent
+chart/radius/chord oracles, analytic unported quality, actual motion windows, seam/boundary
 invariants, derivatives and observer/trace/DEBUG independence. A suite can also
 be run directly, e.g. `mesh/tests/practical_acceptance.jl`.
 
 For a deliberately captured numerical checkpoint, use a **fresh** baseline:
 
 ```sh
-julia --project=. mesh/tests/meshing_snapshot.jl record out/snapshot.toml
-julia --project=. mesh/tests/meshing_snapshot.jl compare out/snapshot.toml
+export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 JULIA_NUM_THREADS=1
+julia --project=. --threads=1 --gcthreads=1 mesh/tests/meshing_snapshot.jl record out/snapshot.toml
+julia --project=. --threads=1 --gcthreads=1 mesh/tests/meshing_snapshot.jl compare out/snapshot.toml
 ```
+
+Use identical threading controls for both commands. On the reviewed Julia build,
+`OPENBLAS_NUM_THREADS=1` alone still leaves BLAS at eight threads; setting
+`OMP_NUM_THREADS=1` also is necessary. Fine fitted optimization can amplify
+thread-dependent floating-point differences; this is not a geometry change.
 
 This hashes every public mesh field and exact VTK bytes. Never overwrite an old
 baseline or weaken comparison to hide an intentional algorithm change.

@@ -1,4 +1,4 @@
-# Shared surface metrics and acceptance for fitted and unported cone meshes.
+# Shared metrics and acceptance for fitted/unported cylindrical and conical meshes.
 module SurfaceMeshQuality
 using LinearAlgebra
 import ..housing_radius

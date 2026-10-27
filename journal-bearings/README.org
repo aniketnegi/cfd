@@ -8,8 +8,8 @@ around the circumference, producing pressure that can support a load.
 
 This project builds numerical models of that film, beginning with geometry and
 meshing before moving to reduced lubrication models and full three-dimensional
-CFD. Current grid work focuses on conical bearings; a zero semi-cone angle
-gives the corresponding cylindrical geometry.
+CFD. The shared surface mesher in =mesh/2d/= supports cylindrical and conical
+bearings; a zero semi-cone angle gives a cylinder.
 
 * Approach
 
@@ -23,23 +23,30 @@ stability. Reduced and three-dimensional models use common geometry and
 operating conditions so their predictions can be compared with each other and
 with published experimental and numerical results.
 
-* Generate a 2D conical housing grid
+* Generate a 2D housing surface grid
 
 From =journal-bearings/=, run (all lengths in mm):
 
 #+begin_src sh
-julia --project=. mesh/2d/conical/generate.jl \
+julia --project=. mesh/2d/generate.jl \
   --geometry unported --journal-radius-mm 50 --length-mm 100 \
   --clearance-mm 0.05 --cone-angle-deg 10 --eccentricity-ratio 0.6 \
   --n-theta 512 --n-axial 256 --output out/my-unported.vtk
 #+end_src
 
+Use =--cone-angle-deg 0= for a cylindrical surface; nonzero angles produce
+cones. Both use the shared =mesh/2d/= implementation and acceptance checks.
+
 Use =--geometry surface-feed= with =--feed-diameter-mm 5 --feed-z-mm 50= to
-label a central feed footprint; choose a distinct output filename. The 5 mm
-opening is a project example, not a documented Gangrade dimension. The optional
-resolution defaults to 512 by 256. Use =--help= or =-h= for the manpage-style
-option list; long options accept either =--name VALUE= or =--name=VALUE=.
-Output paths must not already exist. This writes a Quad4 surface VTK with
-cell-centre radial gaps, not a 3D fluid mesh or a pressure solution. Feed cells
-are a mask, not a resolved passage or prescribed supply condition. Run
-=julia --project=. mesh/2d/conical/generate_checks.jl= for CLI checks.
+fit land quads around a +Y drilling and export its rim, not a feed-cell mask
+or a resolved 3D passage. Supply a fresh =--output FILE=; named fitted cases
+remain unsupported by the external case loader. Requested dimensions and
+background counts are used directly; unavailable transitions or failed
+acceptance checks reject rather than silently substitute another mesh.
+The 5 mm opening is a project example, not a documented Gangrade dimension.
+
+See [[file:mesh/2d/README.md][surface meshing API, units, acceptance and examples]].
+Run =julia --project=. mesh/tests/runtests.jl= for the complete mesh suite,
+including cylindrical unported/fitted generation and fresh-process CLI checks.
+Use =--help= or =-h= for options; long options accept =--name VALUE= or
+=--name=VALUE=. Generation solves no fluid equation.

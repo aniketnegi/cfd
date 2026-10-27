@@ -29,7 +29,7 @@ function run_conical_verification()
             for path in (joinpath(@__DIR__,"conical.jl"), @__FILE__,
                          joinpath(@__DIR__,"cylindrical.jl"),
                          joinpath(@__DIR__,"..","..","bearing.jl"),
-                         joinpath(@__DIR__,"..","..","mesh","2d","conical","grid.jl"))))
+                         joinpath(@__DIR__,"..","..","mesh","2d","grid.jl"))))
     save_metadata() = open(joinpath(dir,"verification.toml"),"w") do io
         TOML.print(io,metadata;sorted=true)
     end

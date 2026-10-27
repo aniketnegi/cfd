@@ -13,10 +13,10 @@ import time
 import tomllib
 
 SOURCE_FILES = [
-    "bearing.jl", "mesh/2d/conical/grid.jl", "mesh/2d/conical/quality.jl",
-    "mesh/2d/conical/metrics.jl", "mesh/2d/conical/surface_feed.jl",
-    "mesh/2d/conical/inlet/controlled.jl",
-    "mesh/2d/conical/inlet/seed.jl", "mesh/2d/conical/inlet/placement.jl",
+    "bearing.jl", "mesh/2d/grid.jl", "mesh/2d/quality.jl",
+    "mesh/2d/metrics.jl", "mesh/2d/surface_feed.jl",
+    "mesh/2d/inlet/controlled.jl",
+    "mesh/2d/inlet/seed.jl", "mesh/2d/inlet/placement.jl",
     "mesh/examples/compare_inlet_iterations.jl", "mesh/examples/inlet_long_run.jl",
 ]
 CASES = ["reference-fine", "reference", "diameter-8", "combined-odd",

@@ -244,9 +244,9 @@ function diagnose_optimizer(directory; name="reference", budget=720)
     p = BearingParameters(journal_midpoint_radius=g.radius,bearing_length=g.length,
         radial_clearance=g.clearance,semicone_angle_deg=g.angle,eccentricity_ratio=g.eccentricity_ratio)
     mkpath(directory)
-    sources = ("../../bearing.jl","../2d/conical/grid.jl","../2d/conical/surface_feed.jl",
-        "../2d/conical/quality.jl","../2d/conical/inlet/seed.jl","../2d/conical/metrics.jl",
-        "../2d/conical/inlet/placement.jl","../2d/conical/inlet/controlled.jl",
+    sources = ("../../bearing.jl","../2d/grid.jl","../2d/surface_feed.jl",
+        "../2d/quality.jl","../2d/inlet/seed.jl","../2d/metrics.jl",
+        "../2d/inlet/placement.jl","../2d/inlet/controlled.jl",
         "compare_inlet_iterations.jl","diagnose_inlet_optimizer.jl")
     metadata = Dict("name"=>name,"budget"=>budget,"stability_steps"=>0,"precision_bits"=>256,
         "julia_version"=>string(VERSION),"julia_threads"=>Threads.nthreads(),"blas_threads"=>BLAS.get_num_threads(),

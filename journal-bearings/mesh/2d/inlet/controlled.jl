@@ -1,4 +1,4 @@
-# Entry point for the conical inlet construction.
+# Entry point for cylindrical/conical fitted inlet construction.
 # Internal coordinates and lengths use metres; surface_feed_grid converts to mm.
 module ControlledSurfaceInlet
 

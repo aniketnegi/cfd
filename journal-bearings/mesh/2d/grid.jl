@@ -82,8 +82,8 @@ end
 """
     housing_grid(p, n_theta, n_axial; theta_nodes=nothing, z_nodes=nothing)
 
-Map a periodic background onto the housing cone, and calculate cell radial gaps
-and physical areas. Spacing is uniform by default. Supply angular/axial position
+Map a periodic background onto the cylindrical/conical housing and calculate
+cell radial gaps and physical areas. Spacing is uniform by default. Supply angular/axial position
 vectors to adjust either direction: lengths must be n_theta and n_axial+1, with
 z_nodes spanning exactly 0 to p.bearing_length.
 

@@ -1,7 +1,7 @@
 # Generate the 5 mm reference inlet. Run from journal-bearings/.
 include(joinpath(@__DIR__, "../../bearing.jl"))
-include(joinpath(@__DIR__, "../2d/conical/grid.jl"))
-include(joinpath(@__DIR__, "../2d/conical/surface_feed.jl"))
+include(joinpath(@__DIR__, "../2d/grid.jl"))
+include(joinpath(@__DIR__, "../2d/surface_feed.jl"))
 include(joinpath(@__DIR__, "../vtk.jl"))
 
 function main(path=joinpath(@__DIR__,

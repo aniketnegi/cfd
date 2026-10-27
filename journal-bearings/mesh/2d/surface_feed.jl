@@ -5,8 +5,8 @@ include(joinpath(@__DIR__, "inlet", "controlled.jl"))
 """
     surface_feed_grid(p, n_theta, n_axial; feed_diameter, feed_z)
 
-Build a conical mesh around a circular +Y drilling at axial position feed_z.
-Cells cover the solid surface around the opening; `feed_edges` identifies its rim.
+Build a cylindrical/conical mesh around a circular +Y drilling at axial position
+feed_z. Cells cover the surface around the opening; `feed_edges` identifies its rim.
 
 Bearing dimensions come from p; feed_diameter and feed_z use mm.
 n_theta and n_axial size the initial background directly. The inlet replaces
@@ -17,8 +17,8 @@ reject the mesh.
 
 `nodes`, `radial_gaps` and `areas` use mm/mm/mm². `surface` retains the internal
 surface coordinates in metres and the cell/face connectivity. Its coordinate
-areas differ from physical conical areas. Eccentricity changes the gaps, not
-housing vertices. Invalid inputs or unavailable transitions throw `ArgumentError`;
+areas require the surface metric for physical areas (unit scale on a cylinder).
+Eccentricity changes the gaps, not housing vertices. Invalid inputs or unavailable transitions throw `ArgumentError`;
 failed quality checks report the measurements and reject the mesh.
 """
 function surface_feed_grid(

@@ -8,8 +8,8 @@ using Test
 
 module CurrentMesh
 include(joinpath(@__DIR__, "../../bearing.jl"))
-include(joinpath(@__DIR__, "../../mesh/2d/conical/grid.jl"))
-include(joinpath(@__DIR__, "../../mesh/2d/conical/surface_feed.jl"))
+include(joinpath(@__DIR__, "../../mesh/2d/grid.jl"))
+include(joinpath(@__DIR__, "../../mesh/2d/surface_feed.jl"))
 end
 
 module ReviewedTrial

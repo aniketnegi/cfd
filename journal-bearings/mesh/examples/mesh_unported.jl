@@ -1,6 +1,6 @@
 # Unported conical housing grid. This does not specify lubricant replenishment.
 include(joinpath(@__DIR__, "../../bearing.jl"))
-include(joinpath(@__DIR__, "../2d/conical/grid.jl"))
+include(joinpath(@__DIR__, "../2d/grid.jl"))
 include(joinpath(@__DIR__, "../vtk.jl"))
 
 function main(path=joinpath(@__DIR__, "../../out/cases/conical-unported-e0p6/mesh.vtk"))

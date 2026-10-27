@@ -103,7 +103,7 @@ end
         metadata = TOML.parsefile(joinpath(output,"inputs.toml"))
         @test metadata["budgets"] == [1,2,4]
         @test metadata["cases"][1]["name"] == "smoke"
-        @test haskey(metadata["source_sha256"],"../2d/conical/inlet/placement.jl")
+        @test haskey(metadata["source_sha256"],"../2d/inlet/placement.jl")
         for record in records
             history = readlines(joinpath(output,"smoke-$(record.budget)-history.tsv"))
             nodes = readlines(joinpath(output,"smoke-$(record.budget)-chart-nodes.tsv"))

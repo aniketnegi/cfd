@@ -78,7 +78,7 @@ fields; `runs/2000rpm-vg32-40c/full-film.vtk` contains the same mesh plus
 signed gauge pressure; and `runs/2000rpm-vg32-40c/convergence.tsv` contains
 the grid sweep. A future plot can live alongside its run. The full-film VTK
 intentionally contains its own geometry so it can be opened independently.
-Both VTK files use the periodic cell layout from `mesh/2d/conical/grid.jl` at
+Both VTK files use the periodic cell layout from `mesh/2d/grid.jl` at
 **zero** semi-cone angle. The two conical mesh-only examples have their own
 `out/cases/conical-*/mesh.vtk`. Older OpenFOAM cases and the large
 mesh-research backup retain their previous paths; these were not migrated.

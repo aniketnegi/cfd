@@ -2,7 +2,7 @@
 # Construction uses (theta, z) with z in mm, then converts to metre-based chart
 # coordinates for node placement.
 
-# Recover the +Y cone point from its XZ projection; return (theta, z).
+# Recover the +Y housing point from its XZ projection; return (theta, z).
 function housing_coordinates(parameters, x::Float64, z::Float64)
     radius = housing_radius(parameters, z)
     abs(x) < radius || throw(ArgumentError("inlet point lies outside housing"))

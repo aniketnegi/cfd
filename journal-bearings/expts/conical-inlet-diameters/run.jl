@@ -1,7 +1,7 @@
 # One fixed-budget diameter-relative recipe. No per-diameter parameter search.
 using Test,TOML,SHA,Printf
 include(joinpath(@__DIR__,"../../bearing.jl"))
-include(joinpath(@__DIR__,"../../mesh/2d/conical/surface_feed.jl"))
+include(joinpath(@__DIR__,"../../mesh/2d/surface_feed.jl"))
 include(joinpath(@__DIR__,"../../mesh/vtk.jl"))
 module FieldReference
 include(joinpath(@__DIR__,"../conical-fitted-inlet/checks.jl"))
@@ -132,8 +132,8 @@ function diameter_geometry(out)
             end
         end
     end
-    sources=["bearing.jl","Project.toml","mesh/2d/conical/grid.jl","mesh/2d/conical/surface_feed.jl"]
-    append!(sources,["mesh/2d/conical/inlet/"*s for s in ("controlled.jl","metrics.jl","placement.jl","seed.jl")])
+    sources=["bearing.jl","Project.toml","mesh/2d/grid.jl","mesh/2d/surface_feed.jl"]
+    append!(sources,["mesh/2d/"*s for s in ("quality.jl","metrics.jl","inlet/controlled.jl","inlet/placement.jl","inlet/seed.jl")])
     append!(sources,["expts/conical-inlet-diameters/"*s for s in ("run.jl","operator_checks.jl","plot.py")])
     append!(sources,["expts/conical-fitted-inlet/"*s for s in ("mesh.jl","operator.jl","checks.jl")])
     append!(sources,["simulation/reynolds/"*s for s in ("conical_equilibrium.jl","conical_jfo.jl","conical.jl","jfo_active_set.jl","cylindrical.jl")])

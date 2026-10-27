@@ -1,7 +1,7 @@
 using Test
 include(joinpath(@__DIR__, "../../bearing.jl"))
-include(joinpath(@__DIR__, "../2d/conical/grid.jl"))
-include(joinpath(@__DIR__, "../2d/conical/surface_feed.jl"))
+include(joinpath(@__DIR__, "../2d/grid.jl"))
+include(joinpath(@__DIR__, "../2d/surface_feed.jl"))
 include(joinpath(@__DIR__, "../vtk.jl"))
 
 @testset "Eccentricity checked when bearing parameters are created" begin
@@ -155,8 +155,8 @@ end
 # The inlet deliberately shares the background builder, without loading IO or solvers.
 module InletDependencies
 include(joinpath(@__DIR__, "../../bearing.jl"))
-include(joinpath(@__DIR__, "../2d/conical/grid.jl"))
-include(joinpath(@__DIR__, "../2d/conical/surface_feed.jl"))
+include(joinpath(@__DIR__, "../2d/grid.jl"))
+include(joinpath(@__DIR__, "../2d/surface_feed.jl"))
 end
 
 @testset "Mesh dependency boundaries" begin

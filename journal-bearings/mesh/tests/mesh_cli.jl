@@ -1,5 +1,5 @@
 using Test
-include(joinpath(@__DIR__, "../2d/conical/generate.jl"))
+include(joinpath(@__DIR__, "../2d/generate.jl"))
 
 const BASE_ARGS = ["--geometry", "unported", "--journal-radius-mm", "50",
                    "--length-mm", "100", "--clearance-mm", "0.05",

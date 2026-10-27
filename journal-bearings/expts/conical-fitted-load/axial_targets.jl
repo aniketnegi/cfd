@@ -14,7 +14,7 @@ function run_axial_targets(out)
         for r in lines[2:end] if r[findfirst(==("radial_converged"),header)]=="true")
     cp(prior,joinpath(out,"prior-states.tsv"))
     sources=["bearing.jl","Project.toml"]
-    for directory in ("mesh/2d/conical","simulation/reynolds","expts/conical-fitted-inlet","expts/surface-inlet-hex","expts/conical-fitted-load")
+    for directory in ("mesh/2d","simulation/reynolds","expts/conical-fitted-inlet","expts/surface-inlet-hex","expts/conical-fitted-load")
         for (dir,_,files) in walkdir(joinpath(TARGET_ROOT,directory)),file in files
             endswith(file,".jl") || endswith(file,".toml") || endswith(file,".py") || continue
             push!(sources,relpath(joinpath(dir,file),TARGET_ROOT))

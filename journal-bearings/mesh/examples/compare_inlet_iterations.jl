@@ -2,8 +2,8 @@
 using LinearAlgebra: norm, BLAS
 using SHA, TOML
 include(joinpath(@__DIR__, "../../bearing.jl"))
-include(joinpath(@__DIR__, "../2d/conical/grid.jl"))
-include(joinpath(@__DIR__, "../2d/conical/surface_feed.jl"))
+include(joinpath(@__DIR__, "../2d/grid.jl"))
+include(joinpath(@__DIR__, "../2d/surface_feed.jl"))
 
 function iteration_cases(group="coarse")
     reference = (radius=50.,length=100.,clearance=.05,angle=10.,eccentricity_ratio=.6,
@@ -56,9 +56,9 @@ function compare_iterations(output_directory; cases=iteration_cases(), budgets=(
         throw(ArgumentError("case names must be safe single path components"))
     mkpath(output_directory)
 
-    source_files = ("../../bearing.jl","../2d/conical/quality.jl","../2d/conical/grid.jl","../2d/conical/surface_feed.jl",
-        "../2d/conical/inlet/seed.jl","../2d/conical/metrics.jl",
-        "../2d/conical/inlet/placement.jl","../2d/conical/inlet/controlled.jl",
+    source_files = ("../../bearing.jl","../2d/quality.jl","../2d/grid.jl","../2d/surface_feed.jl",
+        "../2d/inlet/seed.jl","../2d/metrics.jl",
+        "../2d/inlet/placement.jl","../2d/inlet/controlled.jl",
         "compare_inlet_iterations.jl")
     metadata = Dict("julia_version" => string(VERSION), "julia_threads" => Threads.nthreads(),
         "blas_threads" => BLAS.get_num_threads(), "stability_steps"=>0, "budgets" => collect(budgets),

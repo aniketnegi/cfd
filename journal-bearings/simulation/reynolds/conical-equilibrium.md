@@ -11,7 +11,7 @@ worsens, so that candidate is not adopted and no equilibrium is re-solved.
 A later [controlled-transition trial](../../docs/conical-controlled-transition.md)
 improves the surface quality substantially, but still gives 322.87 N axially
 at the held pose. The user has since approved promoting it to the
-[public surface-inlet generator](../../mesh/2d/conical/README.md), replacing that
+[public surface-inlet generator](../../mesh/2d/README.md), replacing that
 generator's stepped mask. The equilibrium driver below still uses the regular
 grid; fitted field integration must be explicit. A subsequent case-specific
 [fitted load continuation](../../docs/conical-fitted-load-balance.md) now obtains

@@ -1,6 +1,6 @@
 # Use the inlet's initial spacing on a complete cone, without making an opening.
 include(joinpath(@__DIR__, "../../bearing.jl"))
-include(joinpath(@__DIR__, "../2d/conical/grid.jl"))
+include(joinpath(@__DIR__, "../2d/grid.jl"))
 include(joinpath(@__DIR__, "../vtk.jl"))
 
 function main(path=joinpath(@__DIR__, "../../out/cases/conical-unported-adjusted-e0p6/mesh.vtk"))
