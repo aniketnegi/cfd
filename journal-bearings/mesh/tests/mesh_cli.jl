@@ -42,6 +42,36 @@ const BASE_ARGS = ["--geometry", "unported", "--journal-radius-mm", "50",
         @test occursin("POLYGONS 8544 42720", read(alternate_path, String))
         @test_throws ArgumentError main(alternate)
 
+        varied_path = joinpath(dir, "varied-geometry.vtk")
+        varied = ["--geometry", "surface-feed", "--journal-radius-mm", "60",
+            "--length-mm", "120", "--clearance-mm", "0.08", "--cone-angle-deg", "15",
+            "--eccentricity-ratio", "0.6", "--n-theta", "160", "--n-axial", "64",
+            "--feed-diameter-mm", "6", "--feed-z-mm", "70.3", "--output", varied_path]
+        varied_cfg = parse_grid_args(varied)
+        @test (varied_cfg.p.journal_midpoint_radius, varied_cfg.p.bearing_length,
+            varied_cfg.p.radial_clearance, varied_cfg.p.semicone_angle_deg) == (60.,120.,.08,15.)
+        main(varied)
+        lines = readlines(varied_path)
+        points = findfirst(line -> startswith(line,"POINTS "), lines)
+        count = parse(Int,split(lines[points])[2])
+        vertices = [Tuple(parse.(Float64,split(line))) for line in lines[points+1:points+count]]
+        @test vertices[1][1] ≈ 60.08 + 60tan(deg2rad(15.)) atol=1e-11
+        @test vertices[1][2:3] == (0.,0.)
+        rim = findfirst(line -> startswith(line,"LINES "), lines)
+        edges = parse(Int,split(lines[rim])[2])
+        @test all(lines[rim+1:rim+edges]) do line
+            all(parse.(Int,split(line)[2:end]).+1) do node
+                x,y,z = vertices[node]
+                y > 0 && isapprox(x^2+(z-70.3)^2,9.; atol=1e-10, rtol=0)
+            end
+        end
+        unavailable_path = joinpath(dir,"unavailable-transition.vtk")
+        unavailable = copy(varied)
+        unavailable[findfirst(==("--output"),unavailable)+1] = unavailable_path
+        unavailable[findfirst(==("--feed-z-mm"),unavailable)+1] = "5"
+        @test_throws r"physical support crosses domain boundary" main(unavailable)
+        @test !ispath(unavailable_path)
+
         rejected_path = joinpath(dir, "rejected-quality.vtk")
         rejected = vcat(["--geometry", "surface-feed"], BASE_ARGS[3:end],
             ["--output", rejected_path, "--n-theta", "12", "--n-axial", "6",

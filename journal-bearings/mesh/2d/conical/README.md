@@ -13,8 +13,9 @@
 - `generate.jl`: command-line input, construction and export.
 
 Load `bearing.jl` and `grid.jl` before loading `surface_feed.jl`. The inlet
-imports `background_grid` and `patch_axis` from that same `grid.jl`; it does
-not maintain another background constructor or spacing implementation.
+imports `BearingParameters` from its caller and `background_grid` / `patch_axis`
+from that same `grid.jl`. It does not maintain another parameter type, background
+constructor or spacing implementation.
 Construction loads neither the exporter nor experiments, Gmsh or fluid solvers.
 
 ## Generate a mesh
@@ -43,13 +44,28 @@ Runnable fixed-input examples:
 - `mesh/examples/mesh_inlet.jl`: the direct fitted inlet.
 - `mesh/examples/compare_inlet_counts.jl`: generate six background-count choices
   and a shape-comparison table in a fresh output directory.
+- `mesh/examples/compare_inlet_geometry.jl`: vary bearing dimensions and inlet
+  geometry, recording accepted meshes and rejected requests.
 
 ## Current inlet limits
 
-The inlet construction supports only journal radius 50 mm, length 100 mm,
-reference radial clearance 0.05 mm, semi-cone angle 10 degrees, and a 5 mm
-+Y drilling at z=50 mm. Other layouts are rejected. Eccentricity may vary:
-it changes the reported gap, not the fixed housing vertices.
+The constructor uses the supplied `BearingParameters`, inlet diameter and
+axial position. The drilling direction remains +Y. Diameter must be positive
+and finite; the complete opening must lie strictly between z=0 and z=L.
+Eccentricity changes the reported gap, not the housing vertices.
+
+The opening must also leave room for the current transition. Its patch
+half-width is 1.5 times the diameter D; the surrounding spacing support spans
+z ± 3D and must fit strictly between the ends and away from the angular seam.
+Enough grid intervals must remain around that support. A physically possible
+opening can therefore still be rejected by this construction. It is never
+silently moved or resized. The exported axial end planes are anchored to 0 and
+the supplied length in mm, avoiding overshoot from the internal unit conversion.
+
+The cached `p.slope` is carried unchanged through construction, optimization
+and measurements. Internal geometry records `R` (housing midpoint radius), `L`
+and `feed_z_m` in metres, `ca = cosd(p.semicone_angle_deg)`, and the dimensionless
+`slope`. Rebuilding geometry after optimization retains these supplied values.
 
 `n_theta` and `n_axial` now construct the actual background. The inlet replaces
 one patch; the resulting cell array is not rectangular. The optimizer runs on
@@ -63,7 +79,8 @@ The transition uses round(9*patch_cells/8) layers, retaining the earlier chosen
 layer/patch ratio. This is a construction rule, not a geometric necessity.
 Inspect `surface.patch_cells` and `surface.transition_layers` for the result.
 
-Examples from the direct construction:
+Examples with Rj=50 mm, L=100 mm, clearance=0.05 mm, angle=10°, and a 5 mm
+midpoint inlet:
 
 | Background counts | Surface cells | Inlet edges | Vertices |
 |-------------------|--------------:|------------:|---------:|
@@ -79,7 +96,12 @@ The new layout tag is `fitted-land-direct-v1`; it is not relabelled as the old
 
 Rim vertices lie on the drilling/cone intersection. Edges between them are
 straight segments. These meshes have an opening, not a resolved 3D passage.
-The quality thresholds are surface checks, not 3D Hex8 quality guarantees.
+Acceptance requires minimum physical corner score >0.9, minimum physical
+face alignment >0.9, and maximum neighbouring **chart-area** ratio <2.
+Edge ratio is reported, not gated. Optimization uses chart angles and areas;
+acceptance checks do not claim that it minimizes a physical-space objective.
+The settings and 180-iteration cap are unchanged; passing does not establish
+an optimum. These are surface checks, not 3D Hex8 quality guarantees.
 
 ## Calling the inlet constructor
 
@@ -89,9 +111,9 @@ include("mesh/2d/conical/grid.jl")
 include("mesh/2d/conical/surface_feed.jl")
 include("mesh/vtk.jl") # only needed for export
 
-p = BearingParameters(journal_midpoint_radius=50., bearing_length=100.,
-    radial_clearance=.05, semicone_angle_deg=10., eccentricity_ratio=.6)
-mesh = surface_feed_grid(p, 512, 256; feed_diameter=5., feed_z=50.)
+p = BearingParameters(journal_midpoint_radius=60., bearing_length=120.,
+    radial_clearance=.08, semicone_angle_deg=15., eccentricity_ratio=.6)
+mesh = surface_feed_grid(p, 640, 208; feed_diameter=6., feed_z=70.3)
 write_vtk("fresh-mesh.vtk", mesh)
 ```
 
@@ -118,8 +140,8 @@ uniform cell size. Input position vectors are not modified.
 
 `patch_axis` constructs the current piecewise-uniform inlet spacing. Both the
 inlet and adjusted-unported example use this function. Sharing it does not make
-its spacing mandatory for the unported case. The fitted inlet still uses the
-fixed physical dimensions listed above, but no longer restricts the count pair.
+its spacing mandatory for the unported case. The fitted inlet derives that
+spacing from the supplied bearing and inlet geometry.
 
 Returned inlet fields:
 - `nodes`: Cartesian housing vertices in mm.
@@ -132,7 +154,9 @@ Returned inlet fields:
   Its `areas` are coordinate-chart areas, not the physical `areas / 1e6`.
 
 Do not reshape inlet cells into `(n_theta,n_axial)`. The fitted fluid calculation
-uses `surface` and its face geometry, not the regular-grid stencil.
+uses `surface` and its face geometry, not the regular-grid stencil. Fluid
+operators outside `mesh/` may still assume reference geometry; this meshing
+interface does not make those operators geometry-aware.
 
 VTK exports place inlet `LINES` before surface `POLYGONS`, with cell data in
 that order. Rim lines have `feed_rim=1`, zero area and NaN gap/corner values.
@@ -148,15 +172,20 @@ Run each command as a separate Julia process from `journal-bearings/`:
 julia --project=. --check-bounds=yes mesh/tests/meshing.jl
 julia --project=. --check-bounds=yes mesh/tests/mesh_cli.jl
 julia --project=. --check-bounds=yes mesh/tests/inlet_counts.jl
+julia --project=. --check-bounds=yes mesh/tests/inlet_geometry.jl
 ```
 
 The first checks shared connectivity, uniform/adjusted geometry, input validation,
 units, export and dependency boundaries.
 The second checks command-line inputs, saved settings, hashes and overwrite rules.
 The third checks non-whitelisted/odd counts, topology and the cached objective's
-analytic gradient against finite differences. These tests load no fluid solvers
-or Gmsh. Objective caching reuses fixed-cell areas and touches only affected
-cells/faces; it does not change the objective or its derivatives.
+analytic gradient against finite differences. The fourth checks supplied
+geometry through every stage: cone/rim equations, independently integrated
+opening area, Cartesian tangent-based corner/alignment measurements, movable
+node selection and eccentricity-independent housing geometry.
+These tests load no fluid solvers or Gmsh. Objective caching reuses fixed-cell
+areas and touches only affected cells/faces; it does not change the objective
+or its derivatives.
 
 The optional fitted fluid integration check is separate:
 
@@ -165,8 +194,11 @@ julia --project=. --check-bounds=yes mesh/tests/meshing_integration.jl
 ```
 
 That test loads the older experimental fluid operator and its Gmsh dependency;
-it is not part of mesh-only checks. Historical bitwise geometry comparisons no
-longer apply because direct construction intentionally changes the mesh.
+it is not part of mesh-only checks. Pre-direct inlet snapshots are not a
+reference for the direct construction.
+Parameterization also adds geometry metadata and consistently uses `p.slope`;
+older inlet hashes therefore need a separately reviewed comparison, not a
+relaxed snapshot check.
 
 For a future structural refactor, record a direct-mesh baseline before editing,
 then compare afterward:
@@ -197,3 +229,49 @@ Ratio 1 means equal edge lengths, not necessarily right angles. The separate
 corner/alignment checks still matter. The first timing includes compilation.
 Quality-rejected requests are recorded rather than accepted silently. Better
 cell shapes do not, by themselves, establish more accurate fluid predictions.
+
+## Compare bearing and inlet geometry
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 JULIA_NUM_THREADS=1 \
+  julia --project=. mesh/examples/compare_inlet_geometry.jl FRESH_DIRECTORY
+```
+
+The checked run exported 19 accepted examples and recorded three rejected
+requests. The inputs vary radius (40/50/60 mm), length (80/90/100/120/123.4 mm),
+clearance (0.05/0.06/0.08/0.1 mm), angle (0/5/10/12/15°), diameter (3/4/5/6/8 mm),
+and axial position. These are individual variations and specific combinations,
+not a claim that every combination or every valid bearing can be meshed.
+Zero angle is checked as the cylindrical limit of this construction.
+
+Two combined examples:
+
+| Rj / L / clearance (mm) | Angle | D / inlet z (mm) | Background | Cells | Corner min | Alignment min | Chart-area ratio max |
+|------------------------|------:|-----------------:|------------|------:|-----------:|--------------:|---------------------:|
+| 45 / 90 / 0.06          |   12° | 4 / 35.3         | 127 x 65   | 8,387 | 0.909606 | 0.989892 | 1.630901 |
+| 60 / 120 / 0.08         |   15° | 6 / 70.3         | 640 x 208  | 136,704 | 0.917930 | 0.993468 | 1.469359 |
+
+An opening touching an end, a fitting opening whose transition crosses an end,
+and an oversized opening are rejected with their reasons. Geometry checks also
+verify the cone and drilling equations, physical area and gaps, the supplied
+optimization centre, and metric measurements against independent 3D tangents.
+This is mesh verification, not fluid-model validation.
+
+Generated evidence is under
+`out/cases/conical-inlet-geometry-comparison-final/`; checks and snapshots are
+under `out/reviews/parameterized-inlet-geometry/`. These outputs are ignored.
+
+## Reference-case regression
+
+Against source checkpoint `a72cf56`, the 128×64, 256×128 and 512×256 reference
+inlets retain bitwise-identical chart coordinates, connectivity, radial gaps
+and physical areas. Initial objectives and gradients are identical at all three
+counts; the full 128×64 optimization history is identical too.
+Using the cached slope consistently changes Cartesian coordinates by at most
+7.11e-15 mm, with roundoff-level changes in physical quality measurements.
+Surface metadata adds `slope` and `feed_z_m`.
+
+All regular-mesh fields and VTK bytes match the earlier baseline. Recording and
+comparing the current nine-mesh baseline also matches all fields and VTK bytes
+exactly. The separate area-calculation consistency cleanup has not been folded
+into this geometry change.

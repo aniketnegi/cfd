@@ -12,7 +12,7 @@ function area_weighted_edge_ratio(grid)
         edge_lengths = Float64[]
         for corner in 1:4
             z = coordinates[corner, 2] * surface.ca
-            radius = surface.R + (0.05 - z) * tand(10.0)
+            radius = surface.R + (surface.L / 2 - z) * surface.slope
             edge = coordinates[mod1(corner + 1, 4), :] - coordinates[corner, :]
             push!(edge_lengths, norm(edge .* [radius / surface.R, 1.0]))
         end

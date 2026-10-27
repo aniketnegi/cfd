@@ -47,7 +47,7 @@ function macro_data(mesh)
         node for node in eachindex(node_valence)
         if node_valence[node] > 0 && !(node in boundary_nodes) &&
             abs(nodes[node, 1] - mesh.R * pi/2) < movable_half_width &&
-            abs(nodes[node, 2] - 0.05 / mesh.ca) < movable_half_width / mesh.ca
+            abs(nodes[node, 2] - mesh.feed_z_m / mesh.ca) < movable_half_width / mesh.ca
     ]
     movable_node_set = Set(movable_nodes)
     active_cells = findall(quad -> any(node -> node in movable_node_set, quad), mesh.quads)
@@ -164,6 +164,8 @@ motion to 0.2 mm for the 5 mm inlet. Return the last accepted layout and history
 reaching the iteration cap is not a claim that the optimum was found.
 """
 function controlled_layout(mesh; max_iterations=180)
+    # The 5 mm reference normalizes the existing numerical step/tolerance
+    # settings; it does not fix the actual inlet diameter.
     diameter_scale = mesh.inlet_radius_m / 0.0025
     selection = macro_data(mesh)
     variables = vec(copy(selection.nodes[selection.free, :]))
@@ -232,7 +234,8 @@ function controlled_layout(mesh; max_iterations=180)
     nodes[selection.free, :] = reshape(variables, :, 2)
     optimized_mesh = assemble_surface_mesh(
         [Tuple(nodes[node, :]) for node in axes(nodes, 1)], mesh.quads, selection.rim;
-        inlet_radius_m=mesh.inlet_radius_m,
+        R=mesh.R, L=mesh.L, ca=mesh.ca, slope=mesh.slope,
+        feed_z_m=mesh.feed_z_m, inlet_radius_m=mesh.inlet_radius_m,
     )
     return (;
         mesh=optimized_mesh,

@@ -79,7 +79,7 @@ whole_area=2pi*p.housing_midpoint_radius*p.bearing_length/cosd(p.semicone_angle_
         @test minimum(g.radial_gaps)>0
         @test all(p.minimum_gap-1e-11 .<= g.radial_gaps .<= p.maximum_gap+1e-11)
         @test isapprox(sum(g.areas),sum(g.surface.areas.*
-            ((g.surface.R .+ (.05 .- g.surface.centre[:,2].*g.surface.ca).*tand(10.))./g.surface.R))*1e6;rtol=1e-13)
+            ((g.surface.R .+ (g.surface.L/2 .- g.surface.centre[:,2].*g.surface.ca).*p.slope)./g.surface.R))*1e6;rtol=1e-13)
         hole=whole_area-sum(g.areas);push!(hole_errors,abs(hole/mouth_area-1))
         @test 0<hole<1.001mouth_area
         @test hole_errors[end] < .007*(8/patch_cells)^2
@@ -134,21 +134,22 @@ end
     @test g0.radial_gaps!=g.radial_gaps
 end
 
-@testset "No silent fallback or unsupported geometry substitution" begin
-    for diameter in (0.,-1.,Inf,NaN,4.,6.),z in (50.,)
+@testset "Invalid inputs and unavailable inlet transitions" begin
+    for diameter in (0.,-1.,Inf,NaN),z in (50.,)
         @test_throws ArgumentError surface_feed_grid(p,128,64;feed_diameter=diameter,feed_z=z)
     end
-    for z in (NaN,-1.,2.5,49.,97.5,102.5)
+    for z in (NaN,Inf,-1.,0.,2.5,97.5,100.,102.5)
         @test_throws ArgumentError surface_feed_grid(p,128,64;feed_diameter=5.,feed_z=z)
     end
     for (nt,nz) in ((2,64),(128,0),(-1,64),(8,4))
         @test_throws ArgumentError surface_feed_grid(p,nt,nz;feed_diameter=5.,feed_z=50.)
     end
-    for (R,L,c,angle) in ((50.,100.,.05,0.),(51.,100.,.05,10.),(50.,90.,.05,10.),(50.,100.,.06,10.))
-        other=BearingParameters(journal_midpoint_radius=R,bearing_length=L,radial_clearance=c,
-            semicone_angle_deg=angle,eccentricity_ratio=.6)
-        @test_throws ArgumentError surface_feed_grid(other,128,64;feed_diameter=5.,feed_z=50.)
+    # These openings fit axially, but the surrounding transition does not.
+    for z in (5.,95.)
+        @test_throws r"physical support crosses domain boundary" surface_feed_grid(p,128,64;
+            feed_diameter=5.,feed_z=z)
     end
+    @test_throws ArgumentError surface_feed_grid(p,128,64;feed_diameter=100.,feed_z=50.)
 end
 
 # The inlet deliberately shares the background builder, without loading IO or solvers.
@@ -161,6 +162,7 @@ end
 @testset "Mesh dependency boundaries" begin
     @test isdefined(InletDependencies, :surface_feed_grid)
     @test isdefined(InletDependencies, :housing_grid)
+    @test InletDependencies.ControlledSurfaceInlet.BearingParameters === InletDependencies.BearingParameters
     @test InletDependencies.ControlledSurfaceInlet.background_grid === InletDependencies.background_grid
     @test InletDependencies.ControlledSurfaceInlet.patch_axis === InletDependencies.patch_axis
     @test !isdefined(InletDependencies, :write_vtk)

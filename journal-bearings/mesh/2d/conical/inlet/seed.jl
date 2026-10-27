@@ -73,33 +73,27 @@ function harmonic_support!(nodes, grid_ids, parameters, centre_i, centre_j, patc
 end
 
 """
-    reference_seed(n_theta, n_axial; inlet_diameter_mm=5.0)
+    reference_seed(p, n_theta, n_axial; feed_diameter, feed_z)
 
-Build the initial cone mesh at the requested background counts. Replace a local
-patch with quadrilateral rings. The patch cell count follows the physical
-background spacing; the transition keeps the existing nine-to-eight layer/patch
-ratio. These are construction choices, not geometric requirements.
+Build the initial cone mesh around a +Y circular drilling. Bearing dimensions,
+diameter and axial position use mm. The patch count follows physical background
+spacing; layers retain the chosen nine-to-eight layer/patch ratio.
 
-Bearing dimensions remain fixed. The internal diameter range is 4–10 mm; the
-public mesh interface still accepts only 5 mm.
+The opening must fit between the ends and leave room for the unchanged ring
+and smoothing construction. Invalid requests are rejected, not moved or resized.
 """
-function reference_seed(n_theta::Int, n_axial::Int; inlet_diameter_mm=5.0)
+function reference_seed(parameters::BearingParameters, n_theta::Int, n_axial::Int;
+    feed_diameter::Real, feed_z::Real)
     n_theta >= 3 || throw(ArgumentError("n_theta must be at least 3"))
     n_axial >= 1 || throw(ArgumentError("n_axial must be positive"))
-    diameter = Float64(inlet_diameter_mm)
-    isfinite(diameter) && 4 <= diameter <= 10 ||
-        throw(ArgumentError("initial inlet construction supports diameters from 4 to 10 mm"))
-
-    # These fixed dimensions must match the public constructor's supported case.
-    parameters = (
-        journal_midpoint_radius=50.0,
-        radial_clearance=0.05,
-        bearing_length=100.0,
-        half_bearing_length=50.0,
-        slope=tan(deg2rad(10.0)),
-    )
+    diameter = Float64(feed_diameter)
+    inlet_z = Float64(feed_z)
+    isfinite(diameter) && diameter > 0 ||
+        throw(ArgumentError("feed_diameter must be positive and finite"))
+    isfinite(inlet_z) || throw(ArgumentError("feed_z must be finite"))
     inlet_radius = diameter / 2
-    inlet_z = 50.0
+    inlet_radius < inlet_z < parameters.bearing_length - inlet_radius ||
+        throw(ArgumentError("the complete inlet opening must lie strictly between the bearing ends"))
     patch_half_width = 1.5 * diameter
     control_radius_factor = 2.87
     control_square_blend = 0.36
@@ -109,7 +103,7 @@ function reference_seed(n_theta::Int, n_axial::Int; inlet_diameter_mm=5.0)
     centre_i = n_theta ÷ 4 + 1
     centre_j = round(Int, inlet_z * n_axial / parameters.bearing_length) + 1
 
-    cos_angle = cosd(10.0)
+    cos_angle = cosd(parameters.semicone_angle_deg)
     circumferential_step = 2pi * housing_radius(parameters, inlet_z) / n_theta
     meridional_step = parameters.bearing_length / (n_axial * cos_angle)
     background_cell_area = circumferential_step * meridional_step
@@ -233,10 +227,11 @@ function reference_seed(n_theta::Int, n_axial::Int; inlet_diameter_mm=5.0)
 
     rim = Set(minmax(rim_ring[segment], rim_ring[mod1(segment + 1, rim_segments)])
         for segment in 1:rim_segments)
-    reference_radius = 0.05005
-    length_m = 0.1
+    reference_radius = parameters.housing_midpoint_radius * 1e-3
+    length_m = parameters.bearing_length * 1e-3
     nodes = [(reference_radius * theta, z * 1e-3 / cos_angle) for (theta, z) in surface_nodes]
     mesh = assemble_surface_mesh(nodes, surface_quads, rim;
-        R=reference_radius, L=length_m, ca=cos_angle, inlet_radius_m=inlet_radius * 1e-3)
+        R=reference_radius, L=length_m, ca=cos_angle, slope=parameters.slope,
+        feed_z_m=inlet_z * 1e-3, inlet_radius_m=inlet_radius * 1e-3)
     return (; mesh..., n_theta, n_axial, patch_cells, transition_layers)
 end

@@ -1,16 +1,17 @@
-# Entry point for the fixed-reference inlet construction.
+# Entry point for the conical inlet construction.
 # Internal coordinates and lengths use metres; surface_feed_grid converts to mm.
 module ControlledSurfaceInlet
 
 using LinearAlgebra, SparseArrays
-import ..background_grid, ..patch_axis
+import ..BearingParameters, ..background_grid, ..patch_axis
 
 include("metrics.jl")
 include("seed.jl")
 include("placement.jl")
 
-function surface(n_theta::Int, n_axial::Int)
-    initial_mesh = reference_seed(n_theta, n_axial)
+function surface(p::BearingParameters, n_theta::Int, n_axial::Int;
+    feed_diameter::Real, feed_z::Real)
+    initial_mesh = reference_seed(p, n_theta, n_axial; feed_diameter, feed_z)
     placement = controlled_layout(initial_mesh)
     mesh = placement.mesh
 

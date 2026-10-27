@@ -5,10 +5,10 @@ include(joinpath(@__DIR__, "inlet", "controlled.jl"))
 """
     surface_feed_grid(p, n_theta, n_axial; feed_diameter, feed_z)
 
-Build the supported conical mesh with a 5 mm inlet at the axial midpoint.
+Build a conical mesh around a circular +Y drilling at axial position feed_z.
 Cells cover the solid surface around the opening; `feed_edges` identifies its rim.
 
-Currently requires Rj=50 mm, L=100 mm, c=0.05 mm and a 10° semi-cone angle.
+Bearing dimensions come from p; feed_diameter and feed_z use mm.
 n_theta and n_axial size the initial background directly. The inlet replaces
 part of that background, so the returned cells do not form a rectangular array.
 Node optimization runs at the requested resolution; there is no hidden coarse
@@ -18,7 +18,8 @@ reject the mesh.
 `nodes`, `radial_gaps` and `areas` use mm/mm/mm². `surface` retains the internal
 surface coordinates in metres and the cell/face connectivity. Its coordinate
 areas differ from physical conical areas. Eccentricity changes the gaps, not
-housing vertices. Unsupported geometry or resolution throws `ArgumentError`.
+housing vertices. Invalid inputs or unavailable transitions throw `ArgumentError`;
+failed quality checks report the measurements and reject the mesh.
 """
 function surface_feed_grid(
     p::BearingParameters,
@@ -27,30 +28,20 @@ function surface_feed_grid(
     feed_diameter::Real,
     feed_z::Real,
 )
-    dimensions = (
-        p.journal_midpoint_radius,
-        p.bearing_length,
-        p.radial_clearance,
-        p.semicone_angle_deg,
-        Float64(feed_diameter),
-        Float64(feed_z),
-    )
-    reference = (50.0, 100.0, 0.05, 10.0, 5.0, 50.0)
-    all(isfinite, dimensions) && dimensions == reference || throw(ArgumentError(
-        "inlet mesh requires Rj=50, L=100, c=0.05 mm, angle=10°, diameter=5 mm and z=50 mm",
-    ))
-    surface = ControlledSurfaceInlet.surface(n_theta, n_axial)
+    surface = ControlledSurfaceInlet.surface(p, n_theta, n_axial; feed_diameter, feed_z)
 
     # Internal coordinates are (R_ref * theta, z / cos(angle)), in metres.
     nodes = Vector{NTuple{3,Float64}}(undef, length(surface.nodes))
     for (node, (chart_x, chart_y)) in enumerate(surface.nodes)
         theta = chart_x / surface.R
         z = chart_y * surface.ca
-        housing_radius = surface.R + (0.05 - z) * tand(10.0)
+        housing_radius = surface.R + (surface.L / 2 - z) * surface.slope
+        # Keep the end plane exact in public units; conversion can round past L.
+        z_mm = chart_y == surface.L / surface.ca ? p.bearing_length : 1e3 * z
         nodes[node] = (
             1e3 * housing_radius * cos(theta),
             1e3 * housing_radius * sin(theta),
-            1e3 * z,
+            z_mm,
         )
     end
 

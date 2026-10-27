@@ -16,9 +16,11 @@ DESCRIPTION
     The feed variant fits the circular-drill rim with controlled quad blocks;
     it exports land cells plus boundary lines, not a stepped cell mask or 3D
     passage. It prescribes no supply pressure and solves no fluid equation.
-    Fitted inlet support: Rj=50, L=100, c=0.05 mm, angle=10 degrees, diameter=5 mm,
-    z=50 mm. Counts directly size the background; optimization runs at that
-    resolution. The opening replaces a patch, so final counts differ.
+    Fitted inlets use the supplied bearing dimensions, diameter and axial
+    position, with drilling along +Y. The opening and its surrounding transition
+    must fit inside the surface. Counts directly size the background;
+    optimization runs at that resolution. Final counts differ after replacing
+    the inlet patch. Requests failing the quality checks are rejected.
     Use --output FILE for fitted inlets. Named fitted-case manifests are not
     supported by the current external case loader.
     For unported meshes, --experiment NAME creates

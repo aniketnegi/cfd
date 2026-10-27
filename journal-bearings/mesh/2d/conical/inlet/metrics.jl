@@ -8,19 +8,23 @@ Build cell centres, coordinate areas, shared faces and surface-quality measures.
 `rim` contains unordered vertex-ID pairs identifying the inlet boundary.
 
 Faces have an owner cell and either a neighbour cell or neighbour=0 at a boundary.
-Face normals point out of the owner in the coordinate chart. Returned field names
-are also consumed by the existing mesh exporter and fitted-grid calculations.
+Face normals point out of the owner in the coordinate chart. R/L/feed_z_m and
+inlet_radius_m are metres, ca is cos(cone angle), and slope is tan(cone angle).
+Returned field names are also consumed by the mesh exporter and fitted-grid
+calculations.
 """
 function assemble_surface_mesh(
     nodes,
     quads,
     rim;
-    R=0.05005,
-    L=0.1,
-    ca=cosd(10.0),
+    R,
+    L,
+    ca,
+    slope,
+    feed_z_m,
+    inlet_radius_m,
     period=2pi * R,
     regular=false,
-    inlet_radius_m=0.0025,
 )
     centres = zeros(length(quads), 2)
     chart_areas = zeros(length(quads))
@@ -57,7 +61,7 @@ function assemble_surface_mesh(
         edge_lengths = Float64[]
         for corner in 1:4
             z = coordinates[corner, 2] * ca
-            housing_radius = R + (0.05 - z) * tand(10.0)
+            housing_radius = R + (L / 2 - z) * slope
             surface_scale = [housing_radius / R, 1.0]
             next_edge = (coordinates[mod1(corner + 1, 4), :] - coordinates[corner, :]) .* surface_scale
             previous_edge = (coordinates[mod1(corner - 1, 4), :] - coordinates[corner, :]) .* surface_scale
@@ -131,7 +135,7 @@ function assemble_surface_mesh(
 
         # Directions scale with the metric; normals use its inverse so their
         # dot product still describes the physical surface-face alignment.
-        housing_radius = R + (0.05 - midpoint[2] * ca) * tand(10.0)
+        housing_radius = R + (L / 2 - midpoint[2] * ca) * slope
         surface_scale = [housing_radius / R, 1.0]
         normal = face_normals[face] ./ surface_scale
         push!(face_alignment,
@@ -177,5 +181,7 @@ function assemble_surface_mesh(
         corner_scores=vec(minimum(reshape(corner_values, 4, :), dims=1)),
         face_alignment,
         neighbour_area_ratios,
+        slope,
+        feed_z_m,
     )
 end

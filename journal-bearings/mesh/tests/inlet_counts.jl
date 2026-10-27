@@ -53,7 +53,9 @@ include(joinpath(@__DIR__, "../2d/conical/surface_feed.jl"))
 end
 
 @testset "Cached objective and analytic gradient" begin
-    mesh = ControlledSurfaceInlet.reference_seed(64, 32)
+    p = BearingParameters(journal_midpoint_radius=50., bearing_length=100.,
+        radial_clearance=.05, semicone_angle_deg=10., eccentricity_ratio=.6)
+    mesh = ControlledSurfaceInlet.reference_seed(p, 64, 32; feed_diameter=5., feed_z=50.)
     selection = ControlledSurfaceInlet.macro_data(mesh)
     original_nodes = copy(selection.nodes)
     variables = vec(copy(selection.nodes[selection.free,:]))
