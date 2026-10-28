@@ -35,6 +35,7 @@ end
         diagnostic = TOML.parsefile(joinpath(rundir, "diagnostics.toml"))
         @test diagnostic["relative_global_imbalance"] < 1e-11
         @test diagnostic["min_pressure_gauge_pa"] < 0
+        @test length(diagnostic["outward_end_flow_m3_s"]) == 2
         saved_hash = mesh_hash(joinpath(rundir, "run.toml"))
         @test_throws ArgumentError main_run(args; cases_root=root) # no overwrite
         @test_throws ArgumentError parse_run_args(["--experiment", "test-cylinder",

@@ -95,7 +95,7 @@ function transition_run(out)
     files=["expts/conical-inlet-transition/"*s for s in ("layout.jl","run.jl","checks.jl","plot.py")]
     append!(files,["expts/conical-fitted-inlet/"*s for s in ("mesh.jl","operator.jl","checks.jl","run.jl")])
     append!(files,["expts/surface-inlet-hex/mesh.jl","bearing.jl","mesh/2d/grid.jl"])
-    append!(files,["simulation/reynolds/"*s for s in ("conical_equilibrium.jl","conical_jfo.jl","conical.jl","jfo_active_set.jl","cylindrical.jl")])
+    append!(files,["simulation/reynolds/"*s for s in ("conical_equilibrium.jl","conical_jfo.jl","conical.jl","jfo_active_set.jl","cylindrical.jl","full_film.jl","pressure_vtk.jl")])
     metadata=Dict("status"=>"Surface transition experiment; held-pose flow, no equilibrium solve or 3D extrusion",
         "method"=>"Same coarse connectivity; coupled cotangent-angle and log-area placement, then fixed-map subdivision with exact-rim Coons correction. Not a new transition-template topology or a reproduction of a full published elliptic mesher.",
         "area_weight"=>.25,"area_anchor_weight"=>.01,"iteration_cap"=>180,

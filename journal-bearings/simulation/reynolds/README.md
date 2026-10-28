@@ -5,15 +5,16 @@ Geometry inputs use millimetres; solver quantities use SI units.
 
 | Model | Documentation | Implementation |
 |---|---|---|
-| Cylindrical signed full film | This page | `cylindrical.jl` |
-| Conical signed full film | [Formulation](conical-formulation.md) | `conical.jl` |
+| Cylindrical/conical signed full film | This page; [formulation](conical-formulation.md) | `full_film.jl` |
 | 1D mass-conserving cavitation | [Slider benchmark](jfo-slider.md) | `jfo_slider.jl` |
 | Periodic conical mass-conserving cavitation | [JFO formulation](conical-jfo.md) | `conical_jfo.jl` |
 | Rigid floating-bush force balance | [Equilibrium](conical-equilibrium.md) | `conical_equilibrium.jl` |
 
-The bearing solvers construct uniform grids from counts. They do not accept
-supplied fitted or adjusted-spacing meshes. The pressure-only Swift–Stieber
-implementation is in `expts/gangrade-figure6/reynolds_cavitation.jl`.
+The full-film solver accepts supplied unported tensor meshes, including adjusted
+spacing. Count-based full-film functions delegate to the same implementation.
+JFO and equilibrium interfaces construct uniform grids from counts; fitted meshes
+are unsupported. The pressure-only Swift–Stieber implementation is in
+`expts/gangrade-figure6/reynolds_cavitation.jl`.
 See [solver support](../../docs/solver-support.md) for integration limits.
 Thermal effects, elastic deformation and fluid–structure coupling are absent.
 
@@ -22,6 +23,7 @@ Thermal effects, elastic deformation and fluid–structure coupling are absent.
 From `journal-bearings/`, run each test in its own process:
 
 ```sh
+julia --project=. --check-bounds=yes simulation/reynolds/full_film_checks.jl
 julia --project=. --check-bounds=yes simulation/reynolds/checks.jl
 julia --project=. --check-bounds=yes simulation/reynolds/conical_checks.jl
 julia --project=. --check-bounds=yes simulation/reynolds/jfo_slider_checks.jl
@@ -50,6 +52,39 @@ These write under `out/cases/cylindrical-unported-e0p6/`. The result VTK include
 its geometry, gap and signed gauge pressure and can be opened independently.
 Conical and slider verification scripts are documented on their model pages.
 
+## Supplied-mesh full-film API
+
+```julia
+include("bearing.jl")
+include("mesh/2d/grid.jl")
+include("simulation/reynolds/full_film.jl")
+
+p = BearingParameters(journal_midpoint_radius=50., bearing_length=100.,
+    radial_clearance=.05, semicone_angle_deg=10., eccentricity_ratio=.6)
+grid = housing_grid(p,128,64) # optional theta_nodes / z_nodes adjust spacing
+result = solve_full_film(grid; rpm=2000., viscosity_pa_s=.0277,
+    end_pressure_pa=(0.,0.))
+```
+
+These are numerical-example inputs, not an adopted physical operating point.
+Zero cone angle uses the same solver. `assemble_full_film` exposes `A*p=b` and
+face coefficients; `full_film_fluxes` reconstructs continuity from those faces.
+Results retain the supplied grid and return pressure, normal gap, face flows,
+housing pressure force and residual diagnostics. `eccentricity_angle_rad`
+rotates the journal offset relative to the fixed mesh. Returned grids annotate
+updated radial gaps with `eccentricity_angle_rad`; reusing a result grid with
+a different angle refreshes those gaps without moving housing vertices. The
+solve keyword still defaults to zero, regardless of the input grid's annotation.
+
+For export, separately include `simulation/reynolds/pressure_vtk.jl` and call
+`write_conical_pressure_vtk(path,result)` for pressure and normal gap.
+The solver core loads no exporter, cavitation code or experimental mesher.
+
+Angular coordinates are radians and axial coordinates are mm in the mesh;
+the solver converts lengths to metres. Tensor metadata must match the supplied
+vertices/connectivity. Fitted meshes reject rather than being reshaped or
+silently replaced. The named CLI remains cylindrical and uniform-grid only.
+
 ## Cylindrical equations
 
 The steady Reynolds fluxes follow
@@ -77,6 +112,12 @@ specify density or an actual oil sample's operating temperature. Density is
 only used for this conversion, not as an incompressible solver input.
 
 ## Numerical verification
+
+`full_film_checks.jl` checks supplied/adjusted meshes, the discrete energy
+identity, paired face balance, stationary exact solutions, rotating eccentric
+manufactured solutions for both geometries, and force integration. Smoothly
+graded refinement checks pressure accuracy; abrupt spacing changes do not carry
+a blanket second-order accuracy guarantee.
 
 `checks.jl` covers concentric zero pressure, speed/viscosity scaling, axial
 symmetry, signed pressure, linear residuals, boundary balance and the

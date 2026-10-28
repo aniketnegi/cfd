@@ -161,5 +161,9 @@ function housing_grid(
     acceptance = SurfaceMeshQuality.mesh_acceptance(quality; valid_geometry=true,
         placement_stable=true, termination_reason=:direct_construction)
     acceptance.accepted || error("unported mesh does not meet the surface-quality limits: $quality")
-    return (; nodes, quads, radial_gaps, areas, n_theta, n_axial, quality, acceptance)
+    # Retain the supplied tensor coordinates; solvers must not infer uniform spacing.
+    theta_nodes = [background.nodes[i][1] for i in 1:n_theta]
+    z_nodes = [background.nodes[node_id(1, j)][2] for j in 1:n_axial+1]
+    return (; nodes, quads, radial_gaps, areas, n_theta, n_axial, quality, acceptance,
+        parameters=p, theta_nodes, z_nodes)
 end

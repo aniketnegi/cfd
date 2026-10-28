@@ -1,6 +1,6 @@
 # Conical full-film formulation and numerical verification
 
-`conical.jl` implements **rigid, steady, incompressible, Newtonian,
+`full_film.jl`, exposed through `conical.jl`, implements **rigid, steady, incompressible, Newtonian,
 isoviscous, signed full-film Reynolds flow**. It does not implement cavitation,
 a localized feed, elastic deformation or load equilibrium. Negative pressures
 are retained only for numerical verification. These results must not be used
@@ -114,9 +114,12 @@ are derived here; they are not independent published conical validation data.
 
 ## Discretization and boundary conditions
 
-`conical.jl` uses a uniform periodic theta–z housing grid with cell-centred
-pressure. Its assembly is separate from `solve_cylindrical_full_film`;
-`cylindrical.jl` supplies geometry and VTK dependencies.
+`assemble_full_film` uses the supplied periodic theta–z tensor mesh with
+cell-centred pressure. Cylinder and cone entry points share this assembly.
+Uniform formulas below generalize to adjusted spacing by using each face's
+width and the actual distance between adjacent cell centres. At an axial
+boundary, the distance is from the boundary to the first/last centre.
+`full_film.jl` is independent of VTK export.
 
 For each circumferential face, evaluated at the face centre:
 

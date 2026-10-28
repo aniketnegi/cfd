@@ -28,8 +28,13 @@ function run_conical_verification()
         "source_sha256" => Dict(relpath(path,joinpath(@__DIR__,"..","..")) => mesh_hash(path)
             for path in (joinpath(@__DIR__,"conical.jl"), @__FILE__,
                          joinpath(@__DIR__,"cylindrical.jl"),
+                         joinpath(@__DIR__,"full_film.jl"),
+                         joinpath(@__DIR__,"pressure_vtk.jl"),
                          joinpath(@__DIR__,"..","..","bearing.jl"),
-                         joinpath(@__DIR__,"..","..","mesh","2d","grid.jl"))))
+                         joinpath(@__DIR__,"..","..","mesh","2d","grid.jl"),
+                         joinpath(@__DIR__,"..","..","mesh","2d","quality.jl"),
+                         joinpath(@__DIR__,"..","..","mesh","2d","metrics.jl"),
+                         joinpath(@__DIR__,"..","..","mesh","vtk.jl"))))
     save_metadata() = open(joinpath(dir,"verification.toml"),"w") do io
         TOML.print(io,metadata;sorted=true)
     end

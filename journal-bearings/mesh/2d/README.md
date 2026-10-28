@@ -31,6 +31,8 @@ Both grids expose `nodes`, `quads`, `radial_gaps`, `areas`, `n_theta`, `n_axial`
 `quality` and `acceptance`. Cartesian points and gaps are mm; physical areas are
 mm². Fitted grids additionally expose `feed_edges`, `surface`, `placement` and
 `layout="fitted-land-direct-v1"`. The rim is a boundary, not a feed-cell mask.
+Unported grids also retain `parameters`, `theta_nodes` (radians) and `z_nodes`
+(mm). These are owned coordinate copies for mesh-aware tensor solvers.
 
 `n_theta` and `n_axial` are actual requested background counts. The fitted inlet
 replaces a background patch, so its final quads do not form a rectangular array.

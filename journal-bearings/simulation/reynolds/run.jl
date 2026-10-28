@@ -161,7 +161,8 @@ function main_run(args=ARGS; cases_root=DEFAULT_CASES_ROOT)
         ispath(tmp) && rm(tmp)
     end
     diagnostics_path = joinpath(cfg.run_dir, "diagnostics.toml")
-    data = Dict{String,Any}(string(k) => v for (k,v) in pairs(r.diagnostics))
+    data = Dict{String,Any}(string(k) => (v isa Tuple ? collect(v) : v)
+        for (k,v) in pairs(r.diagnostics))
     data["min_pressure_gauge_pa"] = minimum(r.pressure_pa)
     data["max_pressure_gauge_pa"] = maximum(r.pressure_pa)
     open(diagnostics_path, "w") do io

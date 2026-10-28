@@ -62,9 +62,10 @@ function verify_conical_jfo(out)
     root = normpath(joinpath(@__DIR__,"../.."))
     paths = ["simulation/reynolds/"*f for f in
         ("conical_jfo.jl","jfo_active_set.jl","conical_jfo_mms.jl","conical_jfo_checks.jl",
-         "conical_jfo_verification.jl","conical.jl","cylindrical.jl","jfo_slider.jl",
+         "conical_jfo_verification.jl","conical.jl","cylindrical.jl","full_film.jl","pressure_vtk.jl","jfo_slider.jl",
          "jfo_slider_reference.jl","jfo_slider_checks.jl")]
-    append!(paths,["bearing.jl","mesh/2d/grid.jl","expts/conical-jfo-verification/plot.py"])
+    append!(paths,["bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl",
+        "mesh/2d/metrics.jl","mesh/vtk.jl","expts/conical-jfo-verification/plot.py"])
     hashes = Dict(p=>bytes2hex(sha256(read(joinpath(root,p)))) for p in paths)
     metadata = Dict("scope"=>"2D periodic cone JFO numerical verification; artificial reservoir, NOT rig prediction or EHD",
         "julia_version"=>string(VERSION),"source_sha256"=>hashes,

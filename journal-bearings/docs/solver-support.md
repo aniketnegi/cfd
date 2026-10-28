@@ -1,17 +1,20 @@
 # Solver and mesh support
 
-| Entry point | Supported domain | Model |
-|---|---|---|
-| `simulation/reynolds/run.jl` | Named unported cylinders | Signed full film |
-| `solve_cylindrical_full_film` | Uniform periodic cylindrical grid | Signed full film |
-| `solve_conical_full_film` | Uniform periodic cylindrical/conical grid | Signed full film |
-| `solve_conical_jfo` | Uniform periodic cylindrical/conical grid; explicit reservoir cells or pressurized ends | Pressure and liquid content |
-| `equilibrate_floating_bush` | Uniform conical grid with a cell-mask feed | Rigid pressure-load balance |
-| `expts/gangrade-figure6/reynolds_cavitation.jl` | Uniform periodic grid; optional pinned pressure columns | Pressure-only Swift–Stieber obstacle |
+| Entry point                                     | Supported domain                                                                        | Model                                |
+|-------------------------------------------------|-----------------------------------------------------------------------------------------|--------------------------------------|
+| `simulation/reynolds/run.jl`                    | Named unported cylinders                                                                | Signed full film                     |
+| `solve_full_film(grid; ...)` | Supplied unported cylindrical/conical tensor grid, uniform or adjusted | Signed full film |
+| `solve_cylindrical_full_film`                   | Uniform periodic cylindrical grid                                                       | Signed full film                     |
+| `solve_conical_full_film`                       | Uniform periodic cylindrical/conical grid                                               | Signed full film                     |
+| `solve_conical_jfo`                             | Uniform periodic cylindrical/conical grid; explicit reservoir cells or pressurized ends | Pressure and liquid content          |
+| `equilibrate_floating_bush`                     | Uniform conical grid with a cell-mask feed                                              | Rigid pressure-load balance          |
+| `expts/gangrade-figure6/reynolds_cavitation.jl` | Uniform periodic grid; optional pinned pressure columns                                 | Pressure-only Swift–Stieber obstacle |
 
-The bearing solvers construct their own uniform grids from counts. They do not
-consume supplied fitted meshes or the mesher's optional adjusted spacing.
-Fitted cell counts are not `n_theta*n_axial`.
+`solve_full_film` consumes the parameters and tensor coordinates retained by
+`housing_grid`; it uses the supplied spacing and connectivity. The count-based
+full-film entry points construct uniform grids and delegate to this assembly.
+JFO and equilibrium interfaces remain uniform-grid/count-based. No maintained
+solver consumes fitted meshes. Fitted cell counts are not `n_theta*n_axial`.
 
 The mesh CLI supports standalone fitted VTK exports, but rejects named fitted
 cases. `experiment.jl` accepts `controlled-fitted-land-v1` manifests with a
@@ -40,7 +43,7 @@ from `mesh/tests/runtests.jl`.
 
 ## Numerical guarantees and limits
 
-With positive face conductances and Dirichlet anchoring, the uniform full-film
+With positive face conductances and Dirichlet anchoring, the tensor full-film
 pressure matrix satisfies
 
 ```text

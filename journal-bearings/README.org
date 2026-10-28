@@ -7,8 +7,9 @@ and conical journal bearings. The shared =mesh/2d/= mesher builds periodic
 quadrilateral housing surfaces, unported or fitted around a circular +Y inlet.
 Zero semi-cone angle gives a cylinder.
 
-The Reynolds solvers cover signed full film, mass-conserving cavitation and
-rigid load-balance calculations on uniform grids. They do not consume fitted
+The shared full-film Reynolds solver accepts supplied unported cylindrical or
+conical tensor meshes, with uniform or adjusted spacing. Cavitation and rigid
+load-balance interfaces use uniform grids. These solvers do not consume fitted
 meshes or implement thermal flow or elasticity. The named simulation CLI
 supports *unported cylinders only*. Gmsh volume-mesh experiments live in =expts/=;
 they are separate from the surface mesher and Reynolds solvers.
