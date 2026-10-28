@@ -8,9 +8,9 @@
 | `solve_conical_full_film`                       | Uniform periodic cylindrical/conical grid                                               | Signed full film                     |
 | `solve_conical_jfo`                             | Uniform periodic cylindrical/conical grid; explicit reservoir cells or pressurized ends | Pressure and liquid content          |
 | `equilibrate_floating_bush`                     | Uniform conical grid with a cell-mask feed                                              | Rigid pressure-load balance          |
-| `expts/gangrade-figure6/reynolds_cavitation.jl` | Uniform periodic grid; optional pinned pressure columns                                 | Pressure-only Swift–Stieber obstacle |
+| `solve_swift_stieber(grid; ...)` | Supplied unported cylindrical/conical tensor grid, uniform or adjusted; optional pinned pressure cells | Pressure-only Swift–Stieber obstacle |
 
-`solve_full_film` consumes the parameters and tensor coordinates retained by
+`solve_full_film` and `solve_swift_stieber` consume the parameters and tensor coordinates retained by
 `housing_grid`; it uses the supplied spacing and connectivity. The count-based
 full-film entry points construct uniform grids and delegate to this assembly.
 JFO and equilibrium interfaces remain uniform-grid/count-based. No maintained

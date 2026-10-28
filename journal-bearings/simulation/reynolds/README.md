@@ -6,15 +6,15 @@ Geometry inputs use millimetres; solver quantities use SI units.
 | Model | Documentation | Implementation |
 |---|---|---|
 | Cylindrical/conical signed full film | This page; [formulation](conical-formulation.md) | `full_film.jl` |
+| Cylindrical/conical pressure-only cavitation | [Swift–Stieber](swift-stieber.md) | `swift_stieber.jl` |
 | 1D mass-conserving cavitation | [Slider benchmark](jfo-slider.md) | `jfo_slider.jl` |
 | Periodic conical mass-conserving cavitation | [JFO formulation](conical-jfo.md) | `conical_jfo.jl` |
 | Rigid floating-bush force balance | [Equilibrium](conical-equilibrium.md) | `conical_equilibrium.jl` |
 
-The full-film solver accepts supplied unported tensor meshes, including adjusted
-spacing. Count-based full-film functions delegate to the same implementation.
-JFO and equilibrium interfaces construct uniform grids from counts; fitted meshes
-are unsupported. The pressure-only Swift–Stieber implementation is in
-`expts/gangrade-figure6/reynolds_cavitation.jl`.
+The full-film and Swift–Stieber solvers accept supplied unported tensor meshes,
+including adjusted spacing, and share one pressure assembly. Count-based
+full-film functions delegate to that assembly. JFO and equilibrium interfaces
+construct uniform grids from counts; fitted meshes are unsupported.
 See [solver support](../../docs/solver-support.md) for integration limits.
 Thermal effects, elastic deformation and fluid–structure coupling are absent.
 
@@ -24,6 +24,7 @@ From `journal-bearings/`, run each test in its own process:
 
 ```sh
 julia --project=. --check-bounds=yes simulation/reynolds/full_film_checks.jl
+julia --project=. --check-bounds=yes simulation/reynolds/swift_stieber_checks.jl
 julia --project=. --check-bounds=yes simulation/reynolds/checks.jl
 julia --project=. --check-bounds=yes simulation/reynolds/conical_checks.jl
 julia --project=. --check-bounds=yes simulation/reynolds/jfo_slider_checks.jl
