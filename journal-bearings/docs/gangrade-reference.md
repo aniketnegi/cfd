@@ -6,16 +6,16 @@ Gangrade, Phalle and Mantha, *Performance Analysis of a Conical Hydrodynamic
 Journal Bearing*, 43:559–573 (2019):
 [DOI 10.1007/s40997-018-0217-2](https://doi.org/10.1007/s40997-018-0217-2).
 
-| Quantity | Value | Source |
-|---|---:|---|
-| Mean journal radius | 50 mm | Table 1 |
-| Axial length | 100 mm | Table 1 |
-| Radial clearance | 50 µm | Table 1 |
-| Semi-cone angle | 10° | Fig. 6 comparison; Fig. 8 |
-| Dynamic viscosity | 0.0277 Pa·s | Table 1 |
-| Density | 860 kg/m³ | Table 1 |
-| Supply/reference pressure | 0.5 MPa | Table 1 |
-| Speed for Figs. 6 and 8 | 2000 rpm | Figure-specific text/labels |
+| Quantity                  |       Value | Source                      |
+|---------------------------|------------:|-----------------------------|
+| Mean journal radius       |       50 mm | Table 1                     |
+| Axial length              |      100 mm | Table 1                     |
+| Radial clearance          |       50 µm | Table 1                     |
+| Semi-cone angle           |         10° | Fig. 6 comparison; Fig. 8   |
+| Dynamic viscosity         | 0.0277 Pa·s | Table 1                     |
+| Density                   |   860 kg/m³ | Table 1                     |
+| Supply/reference pressure |     0.5 MPa | Table 1                     |
+| Speed for Figs. 6 and 8   |    2000 rpm | Figure-specific text/labels |
 
 Table 1 also lists 2.6 m/s. At 50 mm radius, 2000 rpm gives 10.472 m/s;
 these are not interchangeable operating inputs.
