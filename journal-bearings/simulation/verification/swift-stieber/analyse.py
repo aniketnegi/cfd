@@ -1,10 +1,12 @@
 """Check one Swift-Stieber verification run without archived review inputs."""
-import argparse
+import sys
 import csv
 import hashlib
 import json
 import math
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from command import execute, parser, require
 import tomllib
 
 
@@ -29,21 +31,22 @@ def analyse(directory):
     metadata = tomllib.loads((directory / 'inputs.toml').read_text())
     root = Path(__file__).resolve().parents[3]
     for name, expected in metadata['source_sha256'].items():
-        assert hashlib.sha256((root / name).read_bytes()).hexdigest() == expected, name
+        require(hashlib.sha256((root / name).read_bytes()).hexdigest() == expected,
+                f'source hash mismatch: {name}')
     sources = [name for name in ['results.tsv', 'cylindrical.tsv', 'mms.tsv',
                                 'fd-comparison.tsv', 'fd-mms.tsv', 'fv-flux-checks.tsv', 'long-bearing.tsv',
                                 'zero-angle.tsv', 'force-analytic.tsv']
                if (directory / name).exists()]
-    assert sources, 'No supported result table in run directory'
+    require(sources, 'No supported result table in run directory')
     checks = {}
     for name in sources:
         data = rows(directory / name)
-        assert data, name
+        require(data, f'{name}: no result rows')
         for row in data:
             for column in ['positive_pressure_residual', 'positive_pressure_relative_residual',
                            'complementarity', 'defect_accounting_relative']:
                 if column in row:
-                    assert abs(row[column]) < 1e-10, (name, column)
+                    require(abs(row[column]) < 1e-10, f'{name}: {column} exceeds tolerance')
         checks[name] = dict(rows=len(data))
         if name == 'fd-comparison.tsv':
             fine = max(data, key=lambda row: row['nt'])
@@ -57,9 +60,11 @@ def analyse(directory):
             summary = []
             for key, family in sorted(families.items()):
                 family.sort(key=lambda row: row['nt'])
-                assert all(b['nt'] == 2*a['nt'] and b['nz'] == 2*a['nz'] for a,b in zip(family, family[1:]))
+                require(all(b['nt'] == 2*a['nt'] and b['nz'] == 2*a['nz'] for a,b in zip(family, family[1:])),
+                        f'{key}: refinement counts must double')
                 last = family[-1]
-                assert math.isfinite(last['pressure_common_coordinate_mismatch'])
+                require(math.isfinite(last['pressure_common_coordinate_mismatch']),
+                        f'{key}: missing finite refinement comparison')
                 summary.append(dict(angle_deg=key[0], epsilon=key[1], groove=key[2],
                     midplane_maximum_pa=last['midplane_maximum_pa'],
                     global_maximum_pa=last['maximum_pressure_pa'],
@@ -70,6 +75,9 @@ def analyse(directory):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('directory', type=Path)
-    analyse(parser.parse_args().directory)
+    cli = parser(__doc__)
+    args = cli.parse_args()
+    if not args.directory.is_dir():
+        cli.error(f'not a run directory: {args.directory}')
+    raise SystemExit(execute(lambda: analyse(args.directory), args,
+                             label=f'analyse {args.directory}'))

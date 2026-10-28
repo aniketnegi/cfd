@@ -17,7 +17,14 @@ python simulation/verification/swift-stieber/plot.py out/verification/ss-cone
 
 Use fresh output directories. Runs save inputs, source hashes, comparison tables
 and fields there. Python analysis uses the standard library; plotting requires
-Matplotlib.
+Matplotlib. Use `--help` for options, `-v` for case diagnostics or `-q`
+for errors only.
+
+Analyse and plot cylinder, cone and independent FD comparisons with the same
+commands, passing the corresponding run directory. Analysis also accepts the
+specialist check tables below; plotting supports only cylinder, cone, MMS and
+FD-comparison tables. Use `plot.py DIRECTORY --table results.tsv` if a directory
+contains several supported tables. Postprocessing replaces its derived JSON/PNG.
 
 ## Cylinder and independent finite-width calculation
 
@@ -52,7 +59,9 @@ Cameron-Wood numerical details are not recovered. Neither an unrelated coarse
 mesh description nor infinite-width pressure agreement establishes its
 finite-width flow accuracy.
 
-## Independent end-flow and manufactured checks
+## Specialist studies
+
+### Independent end-flow and manufactured checks
 
 ```sh
 julia --project=. simulation/verification/swift-stieber/fd_checks.jl out/verification/ss-fd-checks

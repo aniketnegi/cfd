@@ -39,7 +39,10 @@ function run_benchmark(output;full=false)
         end
     end
 end
-if abspath(PROGRAM_FILE)==@__FILE__
-    length(ARGS) in (1,2) && (length(ARGS)==1 || ARGS[2]=="--full") || error("usage: run.jl FRESH_OUTPUT [--full]")
-    run_benchmark(ARGS[1];full="--full" in ARGS)
+include(joinpath(@__DIR__, "../../../cli.jl"))
+if abspath(PROGRAM_FILE) == @__FILE__
+    exit(BearingCLI.study_main(; full=true,
+        description="Compare signed full-film loads with Donaldson and independent spectral references.") do cfg
+        run_benchmark(cfg.output; full=cfg.full)
+    end)
 end

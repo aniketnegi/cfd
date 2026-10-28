@@ -70,7 +70,10 @@ function compare_fd(output;full=false)
         end
     end
 end
-if abspath(PROGRAM_FILE)==@__FILE__
-    length(ARGS) in (1,2) && (length(ARGS)==1 || ARGS[2]=="--full") || error("usage: compare_fd.jl FRESH_OUTPUT [--full]")
-    compare_fd(ARGS[1];full="--full" in ARGS)
+include(joinpath(@__DIR__, "../../../cli.jl"))
+if abspath(PROGRAM_FILE) == @__FILE__
+    exit(BearingCLI.study_main(; full=true,
+        description="Compare independent finite differences with finite-volume pressure and end flows.") do cfg
+        compare_fd(cfg.output; full=cfg.full)
+    end)
 end

@@ -19,10 +19,10 @@ include("placement.jl")
 function surface(p::BearingParameters, n_theta::Int, n_axial::Int;
     feed_diameter::Real, feed_z::Real, max_iterations::Int=DEFAULT_MAX_ITERATIONS,
     movement_tolerance::Real=DEFAULT_MOVEMENT_TOLERANCE,
-    stability_steps::Int=DEFAULT_STABILITY_STEPS)
+    stability_steps::Int=DEFAULT_STABILITY_STEPS, observer=nothing)
     stability_steps > 0 || throw(ArgumentError("public meshes require a positive stability window"))
     initial_mesh = reference_seed(p, n_theta, n_axial; feed_diameter, feed_z)
-    placement = controlled_layout(initial_mesh; max_iterations, movement_tolerance, stability_steps)
+    placement = controlled_layout(initial_mesh; max_iterations, movement_tolerance, stability_steps, observer)
     mesh = placement.mesh
 
     quality = mesh.quality

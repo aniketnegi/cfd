@@ -9,6 +9,10 @@ julia --project=. simulation/verification/jfo/slider/jfo_slider_verification.jl 
 julia --project=. simulation/verification/jfo/conical/conical_jfo_verification.jl out/verification/jfo-cone
 ```
 
+Use `--help` for options, `-v` for refinement diagnostics or `-q` for errors only.
+Without a directory argument each runner uses its fixed case-specific default;
+pass an explicit fresh directory for repeated studies.
+
 ## Slider
 
 The Lengiewicz et al. sinusoidal slider compares pressure, liquid content,

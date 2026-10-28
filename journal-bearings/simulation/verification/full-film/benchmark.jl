@@ -144,7 +144,7 @@ end
 function fresh_output(path; suite)
     ispath(path) && error("refusing to overwrite $path")
     mkpath(path)
-    files=["bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl","mesh/2d/metrics.jl",
+    files=["cli.jl","simulation/verification/command.py","bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl","mesh/2d/metrics.jl",
         "simulation/reynolds/src/full_film.jl","Project.toml","Manifest.toml"]
     append!(files,[relpath(joinpath(@__DIR__,name),SOURCE) for name in readdir(@__DIR__)
         if endswith(name,".jl") || endswith(name,".py") || endswith(name,".csv") || endswith(name,".toml")])

@@ -30,9 +30,10 @@ function surface_feed_grid(
     max_iterations::Int=ControlledSurfaceInlet.DEFAULT_MAX_ITERATIONS,
     movement_tolerance::Real=ControlledSurfaceInlet.DEFAULT_MOVEMENT_TOLERANCE,
     stability_steps::Int=ControlledSurfaceInlet.DEFAULT_STABILITY_STEPS,
+    observer=nothing,
 )
     surface = ControlledSurfaceInlet.surface(p, n_theta, n_axial;
-        feed_diameter, feed_z, max_iterations, movement_tolerance, stability_steps)
+        feed_diameter, feed_z, max_iterations, movement_tolerance, stability_steps, observer)
 
     # Internal coordinates are (R_ref * theta, z / cos(angle)), in metres.
     nodes = Vector{NTuple{3,Float64}}(undef, length(surface.nodes))

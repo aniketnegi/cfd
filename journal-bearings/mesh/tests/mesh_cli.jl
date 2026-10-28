@@ -23,6 +23,18 @@ const BASE_ARGS = ["--geometry", "unported", "--journal-radius-mm", "50",
         @test (equals.n_theta, equals.n_axial) == (16, 4)
         main(args)
         @test occursin("POLYGONS 64 320", read(path, String))
+        quiet_path = joinpath(dir, "quiet.vtk")
+        verbose_path = joinpath(dir, "verbose.vtk")
+        @test grid_cli(vcat(BASE_ARGS, ["--output", quiet_path, "--n-theta", "16", "--n-axial", "4", "-q"])) == 0
+        @test grid_cli(vcat(BASE_ARGS, ["--output", verbose_path, "--n-theta", "16", "--n-axial", "4", "-v"])) == 0
+        @test read(path) == read(quiet_path) == read(verbose_path)
+        @test grid_cli(["--unknown"]) == 2
+        @test grid_cli(vcat(BASE_ARGS, ["--output", quiet_path])) == 2
+        @test_throws ArgumentError parse_grid_args(vcat(BASE_ARGS, ["--output", "x.vtk", "-q", "-v"]))
+        @test_throws ArgumentError parse_grid_args(vcat(BASE_ARGS, ["--output", "x.vtk", "--feed-z-mm", "NaN"]))
+        dangling = joinpath(dir, "dangling.vtk")
+        symlink(joinpath(dir, "absent"), dangling)
+        @test_throws ArgumentError parse_grid_args(vcat(BASE_ARGS, ["--output", dangling]))
         @test_throws ArgumentError main(args) # no accidental overwrite
 
         fed_path = joinpath(dir, "fed.vtk")
@@ -33,6 +45,14 @@ const BASE_ARGS = ["--geometry", "unported", "--journal-radius-mm", "50",
         @test occursin("SCALARS feed_rim int 1", read(fed_path, String))
         @test occursin("LINES 32 96", read(fed_path, String))
         @test !occursin("SCALARS feed_cell int 1", read(fed_path, String))
+        observations = Ref(0)
+        observed = surface_feed_grid(cfg.p, 128, 64; feed_diameter=5., feed_z=50.,
+                                     observer=_ -> (observations[] += 1; yield()))
+        @test observations[] >= 2
+        observed_path = joinpath(dir, "observed.vtk")
+        write_vtk(observed_path, observed)
+        @test read(observed_path) == read(fed_path)
+
 
         alternate_path = joinpath(dir, "alternate-counts.vtk")
         alternate = vcat(["--geometry", "surface-feed"], BASE_ARGS[3:end],

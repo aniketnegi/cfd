@@ -151,8 +151,9 @@ julia --project=. mesh/2d/generate.jl \
   --output out/inlet.vtk
 ```
 
-Use `--geometry unported` without feed flags for a complete surface. CLI output
-reports quality and acceptance for both paths. Output files must be fresh.
+Use `--geometry unported` without feed flags for a complete surface. Use `-v`
+for quality and acceptance details, `-q` for errors only, and `--help` for options.
+Output files must be fresh.
 Unported meshes also support `--experiment NAME`. Named fitted cases deliberately
 reject: the case loader does not support `fitted-land-direct-v1`. Use `--output`
 for fitted surfaces; see [solver support](../../docs/solver-support.md).
@@ -169,6 +170,7 @@ not an alternative inlet construction.
 
 ```sh
 julia --project=. mesh/tests/runtests.jl
+julia --project=. mesh/tests/runtests.jl mesh_cli.jl cylindrical.jl
 ```
 
 Checks cover geometry, mesh quality, placement convergence, boundary invariants
@@ -194,8 +196,9 @@ field and the exported VTK bytes against the saved baseline.
 
 `controlled_layout` is private construction machinery. `trace_iterations`
 selects owned search snapshots; `observer` receives owned initial/update/final
-states including window metrics and final acceptance. Observation does not
-change numerical decisions; callback exceptions propagate.
+states including window metrics and final acceptance. `surface_feed_grid` also
+accepts this optional `observer` callback. Observation does not change numerical
+decisions; callback exceptions propagate.
 
 The fixed-budget examples `compare_inlet_iterations.jl`,
 `diagnose_inlet_optimizer.jl` and `inlet_long_run.jl` explicitly select

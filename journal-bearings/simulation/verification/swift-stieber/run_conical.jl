@@ -1,9 +1,8 @@
 include(joinpath(@__DIR__,"cases.jl"))
 include(joinpath(@__DIR__,"sampling.jl"))
-length(ARGS) in (1,2) && (length(ARGS)==1 || ARGS[2]=="--full") || error("usage: run_conical.jl FRESH_OUTPUT [--full]")
-const FULL="--full" in ARGS
-const OUTPUT=fresh_output(ARGS[1];suite=FULL ? "conical-refinement-full" : "conical-refinement-representative")
-function main()
+function main(output; full=false)
+    OUTPUT=fresh_output(output; suite=full ? "conical-refinement-full" : "conical-refinement-representative")
+    FULL=full
     ispath(joinpath(OUTPUT,"results.tsv")) && error("refusing overwrite")
     families=[(10.,ecc,groove) for ecc in (.2,.6,.8) for groove in (false,true)]
     push!(families,(20.,.6,false))
@@ -39,7 +38,7 @@ function main()
                         angle,ecc,groove,nt,nz,maximum(m.profile)/1e6,maximum(result.pressure)/1e6,result.stats.positive_pressure_residual)
                     flush(stdout)
                     if nt==last(grids)
-                        save_field("angle$(angle)-e$(ecc)-groove$(groove)",result)
+                        save_field(OUTPUT,"angle$(angle)-e$(ecc)-groove$(groove)",result)
                         mkpath(joinpath(OUTPUT,"profiles"))
                         open(joinpath(OUTPUT,"profiles","angle$(angle)-e$(ecc)-groove$(groove).tsv"),"w") do profile
                             println(profile,"theta_rad\tmidplane_pressure_pa\tlower_outward_flux_m3_s\tupper_outward_flux_m3_s")
@@ -61,4 +60,9 @@ function main()
         end
     end
 end
-main()
+include(joinpath(@__DIR__, "../../../cli.jl"))
+if abspath(PROGRAM_FILE) == @__FILE__
+    exit(BearingCLI.study_main(; full=true, description="Run conical-refinement verification.") do cfg
+        main(cfg.output; full=cfg.full)
+    end)
+end

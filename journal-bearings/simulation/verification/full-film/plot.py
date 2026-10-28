@@ -1,7 +1,9 @@
 """Plot full-film load refinements; output stays in the run directory."""
-import argparse
+import sys
 import csv
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from command import execute, parser, require
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -10,6 +12,7 @@ import matplotlib.pyplot as plt
 def plot(directory):
     with (directory / 'results.tsv').open() as stream:
         rows = list(csv.DictReader(stream, delimiter='\t'))
+    require(rows, 'results.tsv contains no solves')
     points = sorted({(float(row['L_D']), float(row['epsilon'])) for row in rows})
     if len(points) > 12:
         points = [point for point in points if point in [(0.7, 0.2), (1.0, 0.8), (0.1, 0.99)]]
@@ -29,6 +32,9 @@ def plot(directory):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('directory', type=Path)
-    plot(parser.parse_args().directory)
+    cli = parser(__doc__)
+    args = cli.parse_args()
+    if not args.directory.is_dir():
+        cli.error(f'not a run directory: {args.directory}')
+    raise SystemExit(execute(lambda: plot(args.directory), args,
+                             label=f'plot {args.directory}'))

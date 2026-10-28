@@ -54,7 +54,10 @@ function main(output;full=false)
         end
     end
 end
-if abspath(PROGRAM_FILE)==@__FILE__
-    length(ARGS) in (1,2) && (length(ARGS)==1 || ARGS[2]=="--full") || error("usage: field_checks.jl FRESH_OUTPUT [--full]")
-    main(ARGS[1];full="--full" in ARGS)
+include(joinpath(@__DIR__, "../../../cli.jl"))
+if abspath(PROGRAM_FILE) == @__FILE__
+    exit(BearingCLI.study_main(; full=true,
+        description="Compare classical pressure fields, end gradients and friction with spectral references.") do cfg
+        main(cfg.output; full=cfg.full)
+    end)
 end

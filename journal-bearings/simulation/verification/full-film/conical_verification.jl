@@ -26,7 +26,8 @@ function run_conical_verification()
         "force" => "pressure force on housing conical surface; excludes ends and shear",
         "warning" => "Not a physical bearing prediction or Gangrade reproduction",
         "source_sha256" => Dict(relpath(path,joinpath(@__DIR__,"../../..")) => mesh_hash(path)
-            for path in (joinpath(@__DIR__,"../../reynolds/src/conical.jl"), @__FILE__,
+            for path in (joinpath(@__DIR__,"../../../cli.jl"),
+                         joinpath(@__DIR__,"../../reynolds/src/conical.jl"), @__FILE__,
                          joinpath(@__DIR__,"../../reynolds/src/cylindrical.jl"),
                          joinpath(@__DIR__,"../../reynolds/src/full_film.jl"),
                          joinpath(@__DIR__,"../../reynolds/src/pressure_vtk.jl"),
@@ -74,5 +75,9 @@ function run_conical_verification()
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    run_conical_verification()
+    include(joinpath(@__DIR__, "../../../cli.jl"))
+    exit(BearingCLI.study_main(; output=false,
+        description="Refine the saved conical-unported-e0p6 case; output stays under its runs directory.") do cfg
+        run_conical_verification()
+    end)
 end

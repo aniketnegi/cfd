@@ -19,9 +19,13 @@ Use a fresh output directory. Runs save inputs, source hashes, comparison tables
 and profiles there. Plotting requires NumPy and Matplotlib.
 
 The representative run covers `(L/D,epsilon)=(.7,.2),(1,.8),(.1,.99)` on both
-models and three grids. Add `--full` after the output argument for all 320
+models and three grids. Add `--full` for all 320
 Table 6.5 points, both models and three grids (1920 FV solves). Full-run plots
 show the same three representative cases; `summary.json` includes every family.
+
+Use `--help` for options, `-v` for case diagnostics or `-q` for errors only.
+`analyse.py` and `plot.py` above consume `run.jl` output, not the specialist
+studies below. Derived JSON and PNG files are replaced when postprocessing is rerun.
 
 ## Models and independent reference
 
@@ -43,7 +47,9 @@ an exact continuum target at high eccentricity. Comparing an independent
 reference and a printed table tests different things; matching every printed
 digit is not a solver acceptance condition.
 
-## Field and geometry checks
+## Specialist studies
+
+### Field and geometry checks
 
 ```sh
 julia --project=. simulation/verification/full-film/field_checks.jl out/verification/full-film-fields
@@ -61,7 +67,7 @@ scales and an isolated wall-speed sensitivity; it is not a thermal model.
 Mutation checks run an unmodified control and deliberate defects in temporary
 source copies, never in the working solver.
 
-## Named conical case
+### Named conical case
 
 `conical_verification.jl` runs signed full-film refinement for the saved
 `conical-unported-e0p6` case. It requires an existing mesh and experiment manifest;

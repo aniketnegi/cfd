@@ -70,7 +70,7 @@ function review_conical(out)
     append!(paths,[joinpath(@__DIR__,"../../tests/conical_checks.jl"),
                    joinpath(@__DIR__,"../../reynolds/docs/conical-formulation.md")])
     append!(paths,[joinpath(@__DIR__,"../../..",name) for name in
-        ("bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl","mesh/2d/metrics.jl",
+        ("cli.jl","bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl","mesh/2d/metrics.jl",
          "mesh/vtk.jl","Project.toml","Manifest.toml")])
     push!(paths,@__FILE__)
     result = Dict(
@@ -91,7 +91,10 @@ function review_conical(out)
     end
     TOML.print(stdout,result;sorted=true)
 end
-if abspath(PROGRAM_FILE)==@__FILE__
-    length(ARGS)==1 || error("usage: geometry_review.jl FRESH_OUTPUT")
-    review_conical(ARGS[1])
+include(joinpath(@__DIR__, "../../../cli.jl"))
+if abspath(PROGRAM_FILE) == @__FILE__
+    exit(BearingCLI.study_main(; full=false,
+        description="Report conical geometry approximations, inertia scales and wall-speed sensitivity.") do cfg
+        review_conical(cfg.output)
+    end)
 end

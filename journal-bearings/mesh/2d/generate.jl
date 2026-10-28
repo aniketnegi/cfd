@@ -1,4 +1,5 @@
 # Command-line entry point for cylindrical/conical housing surfaces (lengths in mm).
+include(joinpath(@__DIR__, "../../cli.jl"))
 include(joinpath(@__DIR__, "../../bearing.jl"))
 include(joinpath(@__DIR__, "grid.jl"))
 include(joinpath(@__DIR__, "surface_feed.jl"))
@@ -44,11 +45,15 @@ OPTIONS
     --feed-diameter-mm=MM      required for surface-feed only
     --feed-z-mm=MM             feed centre from the large axial end;
                                required for surface-feed only
+    -v, --verbose              show quality, acceptance and detailed errors
+    -q, --quiet                show only warnings and errors
     -h, --help                 display this help and exit
 
 EXIT STATUS
     0    Success.
+    1    Generation or export failure.
     2    Invalid arguments.
+    130  Interrupted.
 """
 
 const OPTIONS = Set(("--geometry", "--journal-radius-mm", "--length-mm",
@@ -59,6 +64,10 @@ const REQUIRED = ("--geometry", "--journal-radius-mm", "--length-mm",
                   "--clearance-mm", "--cone-angle-deg", "--eccentricity-ratio")
 
 function parse_grid_args(args; cases_root=DEFAULT_CASES_ROOT)
+    verbose = any(arg -> arg in ("-v", "--verbose"), args)
+    quiet = any(arg -> arg in ("-q", "--quiet"), args)
+    verbose && quiet && throw(ArgumentError("--verbose and --quiet cannot be combined"))
+    args = filter(arg -> !(arg in ("-v", "--verbose", "-q", "--quiet")), args)
     opts = Dict{String,String}()
     i = 1
     while i <= length(args)
@@ -84,6 +93,7 @@ function parse_grid_args(args; cases_root=DEFAULT_CASES_ROOT)
     number(key) = begin
         value = tryparse(Float64, opts[key])
         isnothing(value) && throw(ArgumentError("invalid number for $key: $(opts[key])"))
+        isfinite(value) || throw(ArgumentError("nonfinite number for $key"))
         value
     end
     count(key, fallback) = begin
@@ -114,7 +124,7 @@ function parse_grid_args(args; cases_root=DEFAULT_CASES_ROOT)
     isnothing(experiment) && !endswith(lowercase(path), ".vtk") &&
         throw(ArgumentError("--output must end in .vtk"))
     existing = isnothing(dir) ? path : dir
-    ispath(existing) && throw(ArgumentError("output already exists: $existing"))
+    (ispath(existing) || islink(existing)) && throw(ArgumentError("output already exists: $existing"))
     p = BearingParameters(
         journal_midpoint_radius=number("--journal-radius-mm"),
         bearing_length=number("--length-mm"),
@@ -128,7 +138,7 @@ function parse_grid_args(args; cases_root=DEFAULT_CASES_ROOT)
     n_axial >= 1 || throw(ArgumentError("--n-axial must be positive"))
     feed_diameter = geometry == "surface-feed" ? number("--feed-diameter-mm") : nothing
     feed_z = geometry == "surface-feed" ? number("--feed-z-mm") : nothing
-    return (; geometry, p, n_theta, n_axial, feed_diameter, feed_z, path, experiment, dir)
+    return (; geometry, p, n_theta, n_axial, feed_diameter, feed_z, path, experiment, dir, verbose, quiet)
 end
 
 function main(args=ARGS; cases_root=DEFAULT_CASES_ROOT)
@@ -137,9 +147,16 @@ function main(args=ARGS; cases_root=DEFAULT_CASES_ROOT)
         return
     end
     cfg = parse_grid_args(args; cases_root)
+    execute_grid(cfg)
+end
+
+function execute_grid(cfg)
+    # Yield at owned optimizer snapshots so terminal activity remains live even
+    # with a single Julia thread; the observer cannot mutate optimizer state.
+    observer = stderr isa Base.TTY && !cfg.quiet && !cfg.verbose ? _ -> yield() : nothing
     grid = if cfg.geometry == "surface-feed"
         surface_feed_grid(cfg.p, cfg.n_theta, cfg.n_axial;
-                          feed_diameter=cfg.feed_diameter, feed_z=cfg.feed_z)
+                          feed_diameter=cfg.feed_diameter, feed_z=cfg.feed_z, observer)
     else
         housing_grid(cfg.p, cfg.n_theta, cfg.n_axial)
     end
@@ -163,15 +180,26 @@ function main(args=ARGS; cases_root=DEFAULT_CASES_ROOT)
     println("Cell-centre radial gap: $(minimum(grid.radial_gaps)) to $(maximum(grid.radial_gaps)) mm")
 end
 
-if abspath(PROGRAM_FILE) == @__FILE__
-    try
-        main()
-    catch err
-        if err isa ArgumentError
-            println(stderr, "generate.jl: $(sprint(showerror, err))")
-            println(stderr, "Try 'julia --project=. mesh/2d/generate.jl --help' for more information.")
-            exit(2)
-        end
-        rethrow()
+function grid_cli(args=ARGS; cases_root=DEFAULT_CASES_ROOT)
+    if "--help" in args || "-h" in args
+        print(USAGE)
+        return 0
     end
+    cfg = try
+        parse_grid_args(args; cases_root)
+    catch err
+        err isa InterruptException && return 130
+        err isa ArgumentError || rethrow()
+        println(stderr, "generate.jl: ", sprint(showerror, err), ". Try --help.")
+        return 2
+    end
+    code = BearingCLI.report(; cfg.verbose, cfg.quiet, label="generate.jl") do
+        execute_grid(cfg)
+    end
+    code == 0 && !cfg.quiet && println(stderr, "output ", abspath(cfg.path))
+    return code
+end
+
+if abspath(PROGRAM_FILE) == @__FILE__
+    exit(grid_cli())
 end

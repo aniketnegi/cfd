@@ -1,7 +1,5 @@
 include(joinpath(@__DIR__,"cases.jl"))
 include(joinpath(SOURCE,"simulation/reynolds/src/jfo_slider.jl"))
-length(ARGS)==1 || error("usage: long_bearing.jl FRESH_OUTPUT")
-const OUTPUT=fresh_output(ARGS[1];suite="long-bearing-ODE")
 
 function quadrature(order)
     pair=eigen(SymTridiagonal(zeros(order),[k/sqrt(4k^2-1) for k in 1:order-1]))
@@ -25,7 +23,8 @@ function continuum(ecc;order=192)
     fy=integrate(t->gradient(t)*cos(t),0.,rupture)
     return (;rupture,pressure,load=hypot(fx,fy),attitude=rad2deg(atan(abs(fy),abs(fx))))
 end
-function main()
+function main(output)
+    OUTPUT=fresh_output(output; suite="long-bearing-ODE")
     ispath(joinpath(OUTPUT,"long-bearing.tsv")) && error("refusing overwrite")
     # Printed finite-bearing study p111, infinite-width row.
     targets=[(.2130,2.73,60.3),(.3204,4.02,52.3),(.4289,5.44,44.4),
@@ -62,4 +61,9 @@ function main()
         end
     end
 end
-main()
+include(joinpath(@__DIR__, "../../../cli.jl"))
+if abspath(PROGRAM_FILE) == @__FILE__
+    exit(BearingCLI.study_main(; full=false, description="Run long-bearing-ODE verification.") do cfg
+        main(cfg.output)
+    end)
+end

@@ -1,6 +1,4 @@
 include(joinpath(@__DIR__,"cases.jl"))
-length(ARGS)==1 || error("usage: conical_checks.jl FRESH_OUTPUT")
-const OUTPUT=fresh_output(ARGS[1];suite="conical-controls")
 function independent_gap(p,theta,z;pose=pi)
     setprecision(256) do
         angle=BigFloat(p.semicone_angle_deg)*big(pi)/180
@@ -29,7 +27,8 @@ function quadrature_force(p,pressure,te,ze)
     end
     force
 end
-function run_controls()
+function run_controls(output)
+    OUTPUT=fresh_output(output; suite="conical-controls")
     @testset "Independent cone metric, gap and face-coefficient checks" begin
         for angle in (0.,5.,10.,20.)
             p=cone(;angle,ecc=.8);nt,nz=32,16
@@ -153,4 +152,9 @@ function run_controls()
         @test maximum(abs,solve_case(p,nt,nz;rpm=0.).pressure)==0.
     end
 end
-run_controls()
+include(joinpath(@__DIR__, "../../../cli.jl"))
+if abspath(PROGRAM_FILE) == @__FILE__
+    exit(BearingCLI.study_main(; full=false, description="Run conical-controls verification.") do cfg
+        run_controls(cfg.output)
+    end)
+end

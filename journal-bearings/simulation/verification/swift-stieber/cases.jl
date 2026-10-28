@@ -68,7 +68,7 @@ function midplane(a,pressure)
     return (;profile=(1-fraction)*matrix[:,index]+fraction*matrix[:,index+1],target,
         lower=z[index],upper=z[index+1])
 end
-function save_field(name,result;extra=(;))
+function save_field(OUTPUT,name,result;extra=(;))
     a=result.a;m=midplane(a,result.pressure)
     mkpath(joinpath(OUTPUT,"fields"))
     serialize(joinpath(OUTPUT,"fields",name*".jls"),(;
@@ -98,7 +98,7 @@ end
 function fresh_output(path;suite)
     ispath(path) && error("refusing overwrite: $path")
     mkpath(path)
-    files=["bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl","mesh/2d/metrics.jl",
+    files=["cli.jl","simulation/verification/command.py","bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl","mesh/2d/metrics.jl",
         "simulation/reynolds/src/full_film.jl","simulation/reynolds/src/swift_stieber.jl",
         "simulation/reynolds/src/jfo_active_set.jl","simulation/reynolds/src/jfo_slider.jl",
         "Project.toml","Manifest.toml"]

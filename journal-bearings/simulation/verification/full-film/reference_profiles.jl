@@ -4,7 +4,7 @@ function profiles(directory)
     ispath(directory) && error("refusing overwrite")
     mkpath(directory)
     files=[joinpath(@__DIR__,name) for name in
-        ("reference_profiles.jl","spectral.jl","table-6-5.csv","reference.toml")]
+        ("reference_profiles.jl","spectral.jl","table-6-5.csv","reference.toml","../../../cli.jl")]
     open(joinpath(directory,"inputs.toml"),"w") do io
         TOML.print(io,Dict("suite"=>"independent-spectral-profiles","julia_version"=>string(VERSION),
             "modes"=>320,"L_D"=>1.,"physical_validation"=>false,
@@ -36,7 +36,10 @@ function reference_field_at_angle(basis,theta,w)
     axial=[basis.amplitudes[n]*(1-cosh_ratio(basis.alpha[n],z,1.)) for n in 1:320,z in w]
     return vec(angular*axial)
 end
-if abspath(PROGRAM_FILE)==@__FILE__
-    length(ARGS)==1 || error("usage: reference_profiles.jl FRESH_OUTPUT")
-    profiles(ARGS[1])
+include(joinpath(@__DIR__, "../../../cli.jl"))
+if abspath(PROGRAM_FILE) == @__FILE__
+    exit(BearingCLI.study_main(; full=false,
+        description="Export independent classical spectral pressure profiles.") do cfg
+        profiles(cfg.output)
+    end)
 end

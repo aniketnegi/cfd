@@ -1,6 +1,4 @@
 include(joinpath(@__DIR__,"cases.jl"))
-length(ARGS)==1 || error("usage: conical_mms.jl FRESH_OUTPUT")
-const OUTPUT=fresh_output(ARGS[1];suite="conical-manufactured")
 const PREF=1e7
 const FRONT=.37
 function manufactured(theta,z,angle,rpm)
@@ -38,7 +36,8 @@ function exact_ends(angle,n)
     end
     return result
 end
-function run_mms()
+function run_mms(output)
+    OUTPUT=fresh_output(output; suite="conical-manufactured")
     ispath(joinpath(OUTPUT,"mms.tsv")) && error("refusing overwrite")
     families=vec([(angle,rpm,false) for angle in (0.,10.,20.),rpm in (-2000.,2000.)])
     append!(families,[(10.,rpm,true) for rpm in (-2000.,2000.)])
@@ -74,7 +73,7 @@ function run_mms()
                     @printf("MMS angle=%g rpm=%g graded=%s nt=%d pressure=%.4g flow=%.4g force=%.4g\n",
                         angle,rpm,graded,nt,error,flow_error,force_error);flush(stdout)
                     if nt==256 && angle==10. && rpm==2000.
-                        save_field("mms-graded$(graded)",result;extra=(;exact=vec(exact)))
+                        save_field(OUTPUT,"mms-graded$(graded)",result;extra=(;exact=vec(exact)))
                     end
                 end
                 @test all(errors[2:end] .< 0.35 .* errors[1:end-1])
@@ -87,4 +86,9 @@ function run_mms()
         end
     end
 end
-run_mms()
+include(joinpath(@__DIR__, "../../../cli.jl"))
+if abspath(PROGRAM_FILE) == @__FILE__
+    exit(BearingCLI.study_main(; full=false, description="Run conical-manufactured verification.") do cfg
+        run_mms(cfg.output)
+    end)
+end

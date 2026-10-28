@@ -23,7 +23,7 @@ Run commands from =journal-bearings/=:
 julia --project=. -e 'using Pkg; Pkg.instantiate()'
 #+end_src
 
-- [[file:mesh/2d/README.md][Surface meshing]]: API, units, acceptance and examples.
+- [[file:mesh/README.md][Surface meshing]]: generation, examples and tests.
 - [[file:simulation/README.md][Simulation]]: solver interfaces and numerical verification.
 - [[file:simulation/reynolds/README.md][Reynolds models]]: equations, checks and commands.
 - [[file:docs/solver-support.md][Solver support]]: mesh compatibility and known integration limits.

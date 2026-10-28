@@ -40,7 +40,7 @@ function verify_jfo_slider(out)
         end
     end
     root = normpath(joinpath(@__DIR__,"../../../.."))
-    source_paths = ["simulation/reynolds/src/jfo_slider.jl",
+    source_paths = ["cli.jl","simulation/reynolds/src/jfo_slider.jl",
         "simulation/reynolds/src/jfo_active_set.jl",
         "simulation/verification/jfo/slider/jfo_slider_reference.jl",
         "simulation/verification/jfo/slider/jfo_slider_verification.jl",
@@ -70,8 +70,10 @@ function verify_jfo_slider(out)
         out,ref.peak_pressure_pa/1e6,ref.rupture_m*1e3,ref.reformation_m*1e3)
 end
 
+include(joinpath(@__DIR__, "../../../../cli.jl"))
 if abspath(PROGRAM_FILE) == @__FILE__
-    length(ARGS) <= 1 || error("expected at most one fresh output directory")
-    out = isempty(ARGS) ? joinpath(@__DIR__,"../../../../out/cases/lengiewicz-sinusoidal-slider/runs/jfo-verification") : ARGS[1]
-    verify_jfo_slider(normpath(out))
+    exit(BearingCLI.study_main(; default_output=joinpath(@__DIR__,"../../../../out/cases/lengiewicz-sinusoidal-slider/runs/jfo-verification"),
+        description="Run the JFO refinement verification.") do cfg
+        verify_jfo_slider(cfg.output)
+    end)
 end

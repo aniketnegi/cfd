@@ -1,6 +1,6 @@
 # Documentation
 
-- [Surface meshing](../mesh/2d/README.md): API, units, acceptance, CLI and tests.
+- [Surface meshing](../mesh/README.md): generation, examples and tests.
 - [Reynolds solvers](../simulation/reynolds/README.md): models, commands and verification.
 - [Swift–Stieber](../simulation/reynolds/docs/swift-stieber.md): supplied-mesh
   pressure-only cavitation, boundary contracts and diagnostic limits.

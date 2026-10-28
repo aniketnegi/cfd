@@ -43,7 +43,7 @@ function verify_conical_jfo(out)
     append!(paths,["simulation/verification/jfo/conical/"*f for f in
         ("cases.jl","conical_jfo_mms.jl","conical_jfo_verification.jl")])
     append!(paths,["simulation/tests/conical_jfo_checks.jl",
-        "bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl",
+        "cli.jl","bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl",
         "mesh/2d/metrics.jl","mesh/vtk.jl","Project.toml","Manifest.toml"])
     hashes = Dict(p=>bytes2hex(sha256(read(joinpath(root,p)))) for p in paths)
     metadata = Dict("scope"=>"2D periodic cone JFO numerical verification; artificial reservoir, NOT rig prediction or EHD",
@@ -63,8 +63,10 @@ function verify_conical_jfo(out)
     println("Saved 2D numerical cone evidence to $out (not a physical bearing prediction)")
 end
 
+include(joinpath(@__DIR__, "../../../../cli.jl"))
 if abspath(PROGRAM_FILE) == @__FILE__
-    length(ARGS) <= 1 || error("expected at most one fresh output directory")
-    out = isempty(ARGS) ? joinpath(@__DIR__,"../../../../out/cases/conical-jfo-numerical/runs/transport-verification") : ARGS[1]
-    verify_conical_jfo(normpath(out))
+    exit(BearingCLI.study_main(; default_output=joinpath(@__DIR__,"../../../../out/cases/conical-jfo-numerical/runs/transport-verification"),
+        description="Run the JFO refinement verification.") do cfg
+        verify_conical_jfo(cfg.output)
+    end)
 end

@@ -5,6 +5,7 @@ use a fresh output directory; production files and saved cases are untouched.
 This is a narrow sensitivity check, not proof against every defect.
 """
 import argparse
+import sys
 import hashlib
 import json
 import os
@@ -12,6 +13,9 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from command import execute
 
 ROOT = Path(__file__).resolve().parents[3]
 SOLVER = Path("simulation/reynolds/src/full_film.jl")
@@ -33,11 +37,7 @@ MUTATIONS = {
 }
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("output", nargs="?", type=Path,
-                        help="fresh output directory (default: unique directory under out/reviews)")
-    output = parser.parse_args().output
+def run_mutations(output):
     if output is None:
         parent = ROOT / "out/reviews"
         parent.mkdir(parents=True, exist_ok=True)
@@ -78,12 +78,27 @@ def main():
             if not detected:
                 raise RuntimeError(f"Mutation {name} was not detected; inspect {output}")
     hashes = {str(path): hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
-              for path in (*SOURCES, Path(__file__).resolve().relative_to(ROOT))}
+              for path in (*SOURCES, Path(__file__).resolve().relative_to(ROOT),
+                           Path("simulation/verification/command.py"))}
     (output / "mutations.json").write_text(json.dumps({
         "source_sha256": hashes, "control_exit_code": control.returncode,
         "results": results}, indent=2) + "\n")
     print(f"Saved mutation checks to {output}")
+    return output
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("output", nargs="?", type=Path,
+                        help="fresh output directory (default: unique directory under out/reviews)")
+    detail = parser.add_mutually_exclusive_group()
+    detail.add_argument("-v", "--verbose", action="store_true", help="show diagnostics and tracebacks")
+    detail.add_argument("-q", "--quiet", action="store_true", help="show only errors")
+    args = parser.parse_args()
+    if args.output is not None and (args.output.exists() or args.output.is_symlink()):
+        parser.error(f"output already exists: {args.output}")
+    return execute(lambda: run_mutations(args.output), args, label="mutation checks")
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
