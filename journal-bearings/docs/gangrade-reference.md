@@ -57,54 +57,30 @@ flow, operating oil temperature, axial restraint/seating, bush/shaft structural
 dimensions, materials and support compliance. The paper is not a complete EHD
 specification.
 
-## Comparison implementation
+## Reference data and maintained solvers
 
-`expts/gangrade-figure6/reference.toml` records source hashes, figure inputs,
-pixel calibration and approximate readings from the native Fig. 6 raster.
-The adopted ±1.5 normalized-pressure reading band (±0.75 MPa) is not
-experimental uncertainty or an author-supplied confidence interval.
+`expts/gangrade-figure6/reference.toml` records the figure inputs, primary
+source fingerprints, pixel calibration and approximate Fig.6 readings.
+The adopted ±1.5 normalized-pressure reading band (±0.75 MPa) is a visual
+reading convention, not experimental uncertainty or a confidence interval.
+A local PDF/raster is optional evidence for auditing those readings, not a
+dependency of the numerical solver or its verification tests.
 
-The experiment contains three distinct comparisons:
+Use the maintained [Swift–Stieber API](../simulation/reynolds/swift-stieber.md)
+for pressure-only calculations and the [verification tools](../expts/swift-stieber-verification/README.md)
+for independently checked cylindrical/conical test problems. The small
+`reynolds_cavitation.jl` count adapter delegates to that same shared solver;
+`reynolds_checks.jl` exercises it without loading a Gangrade comparison run.
 
-- `run.jl`: JFO with large-end, small-end or both-end pressure supply;
-  ambient-end signed full film is a separate diagnostic.
-- `compare_cavitation.jl`: pressure-only Reynolds/Swift–Stieber versus JFO
-  with matched boundaries; pinned start-line alignments are separate sensitivities.
-- `compare_q4.jl`: independently assembled Q4 Galerkin discretization on
-  Fig. 2's 12 sectors × 4 bands (48 elements, 60 unique periodic nodes).
-  Nodal gap interpolation, 2×2 quadrature, alignment and boundary interpretation
-  are explicit reconstruction assumptions, not author code.
+No maintained runner reconstructs the experimental IP1 passage or resolves
+the conflicting axial/start-line descriptions. End reservoirs, a pinned
+zero-pressure line and a fitted circular feed are distinct boundary models.
+The benchmark's maximum-clearance groove is not an implicit Gangrade input.
+A diameter supplied by the caller is a study parameter, not a recovered
+published dimension.
 
-All use 2000 rpm and 0.0277 Pa·s. The JFO comparison assumes zero-gauge
-cavitation and pressurized axial replenishment; it does not use the 5 mm port.
-
-The complete published curve is **not matched**. At eccentricity 0.8, graph-read
-FEA pressure is about 44.84 MPa. The reconstructed 60-node Q4 result is 50.19 MPa;
-refined Q4/FV results are 67.828/67.843 MPa with both ends pressurized and a
-pressure-only obstacle. Coarse-grid representation materially affects the
-peak, but does not establish the paper's implementation. Refined FE/FV agreement
-is numerical evidence, not physical validation.
-
-## Checks and usage
-
-From `journal-bearings/`:
-
-```sh
-julia --project=. --check-bounds=yes expts/gangrade-figure6/checks.jl
-julia --project=. --check-bounds=yes expts/gangrade-figure6/reynolds_checks.jl
-julia --project=. --check-bounds=yes expts/gangrade-figure6/q4_checks.jl
-```
-
-`run.jl` requires the local PDF and native raster at the paths recorded in
-`reference.toml`, with matching hashes. Comparison scripts also check saved
-input/source hashes; they are not standalone runs from geometry parameters:
-
-- `compare_cavitation.jl` reads
-  `out/cases/gangrade-figure6/runs/pressure-bc-hypotheses/`.
-- `compare_q4.jl` reads the
-  `cavitation-closure-comparison/comparison.toml` manifest under that case.
-
-Each runner accepts a fresh output directory and refuses overwrite.
-The corresponding `plot.py`, `plot_cavitation.py` and `plot_q4.py` read the
-result tables; they require NumPy and Matplotlib. Source snapshots and numeric
-tables under `out/` identify the exact inputs behind a saved result.
+A future parameter study must state its selected pressure reference, feed
+location and boundary interpretation. An exploratory fitted parameter is not
+independent validation. The [solver support table](solver-support.md) still
+marks fitted fluid simulation unsupported; accepted mesh geometry alone does
+not verify a nonorthogonal flow operator.

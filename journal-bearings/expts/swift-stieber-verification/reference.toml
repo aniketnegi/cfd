@@ -1,0 +1,20 @@
+title = "The Finite Journal Bearing, Considering Vaporization"
+authors = "Bengt Jakobsson and Leif Floberg"
+year = 1957
+compilation = "Leif Floberg, Chalmers dissertation, 1961"
+url = "https://research.chalmers.se/publication/177651/file/177651_Fulltext.pdf"
+finite_tables = "Printed pp112-113, PDF pp233-234"
+normalization = "P0=W*c^2/(mu*omega*R^3*L); Q0=Q_both_ends/(omega*R^2*c)"
+boundary = "Zero-pressure maximum-clearance axial groove and axial ends"
+geometry = "Classical cosine clearance; benchmark-only, not production gap replacement"
+interpretation = "Numerical reference comparison, not experimental validation; original Cameron-Wood numerical details not recovered"
+
+[production_cylinder_regression]
+description = "Our saved numerical checkpoint, NOT an independent analytical target"
+origin = "cylindrical-swift-stieber.bTzGkd/results.tsv, production LD1 epsilon.8 nt128"
+nt = 128
+nz = 64
+mu_Pa_s = 0.02752
+load_N = 206219.49058911687
+maximum_pressure_Pa = 6.446726733241798e7
+Q0 = 1.2407509573650184

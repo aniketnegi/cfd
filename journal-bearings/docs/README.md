@@ -7,6 +7,8 @@
 - [Solver support](solver-support.md): mesh compatibility and integration limits.
 - [Full-film verification](../expts/full-film-verification/README.md): independent
   classical reference, geometry comparisons and reproducible benchmark commands.
+- [Swift–Stieber verification](../expts/swift-stieber-verification/README.md):
+  independent finite-width pressure/flux checks and conical manufactured cases.
 - [Gangrade reference](gangrade-reference.md): published inputs, boundary ambiguity
   and the scope of the comparison experiments.
 

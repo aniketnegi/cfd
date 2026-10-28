@@ -68,6 +68,10 @@ function review_conical(out)
     paths = [joinpath(@__DIR__,"..","..","simulation","reynolds",name)
              for name in ("conical.jl","cylindrical.jl","full_film.jl","pressure_vtk.jl",
                           "conical_checks.jl","conical-formulation.md")]
+    append!(paths,[joinpath(@__DIR__,"../..",name) for name in
+        ("bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl","mesh/2d/metrics.jl",
+         "mesh/vtk.jl","Project.toml","Manifest.toml")])
+    push!(paths,@__FILE__)
     result = Dict(
         "julia_version"=>string(VERSION),"grid"=>[nt,nz],"rpm"=>rpm,
         "viscosity_pa_s"=>mu,"assumed_density_kg_m3"=>rho,

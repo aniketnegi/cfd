@@ -106,7 +106,9 @@ julia --project=. --check-bounds=yes expts/gangrade-figure6/reynolds_checks.jl
 Checks cover supplied/adjusted meshes, pressure references, pinning, scaling,
 quiescent limits, full-film recovery and distinction from signed clipping.
 Residual thresholds establish algebraic convergence, not continuum accuracy.
-Analytical/manufactured fields and refinement are additional numerical checks.
+[Swift–Stieber verification](../../expts/swift-stieber-verification/README.md)
+provides independently formulated finite-width references, analytical end-flux
+checks, conical manufactured fields and coordinate-aware refinement runners.
 
 Fitted/ported meshes, thermal effects, elasticity and load equilibrium are not
 implemented here. [JFO](conical-jfo.md) is a separate closure with liquid-content

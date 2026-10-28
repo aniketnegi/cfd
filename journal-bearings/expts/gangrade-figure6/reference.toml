@@ -1,0 +1,74 @@
+# Primary-source inputs and approximate graph readings.
+# These are NOT tabulated author data or fitted simulation targets.
+doi = "10.1007/s40997-018-0217-2"
+figure = "6(b): mid-plane normalized maximum pressure versus eccentricity"
+# Optional local primary evidence; not required by numerical verification.
+pdf_path = "out/literature/gangrade-figure6/paper.pdf"
+pdf_sha256 = "501e9ad38d3be3e744ffd4c379ed6f2801bdedb1cd8fe308db64c21a422b6e05"
+embedded_image = "out/literature/gangrade-figure6/embedded-000.jpg"
+embedded_sha256 = "a8fff31f6e76a64e6259bfb59d0616b9fb559c5d9b55ebd6a609b9c40ee51e13"
+cropped_image = "out/literature/gangrade-figure6/figure6b-native.png"
+cropped_sha256 = "320d8124fb1cf0f8f9053cb506c7d5bea690d6bb1a5cbf94d02a1b61dda1bf96"
+extraction = "pdfimages -f 10 -l 10 -j PDF PREFIX; crop embedded image (850,0,1779,759) with Pillow"
+
+[inputs]
+journal_midpoint_radius_mm = 50.0
+axial_length_mm = 100.0
+radial_clearance_mm = 0.05
+semicone_angle_deg = 10.0
+rpm = 2000.0
+viscosity_pa_s = 0.0277
+pressure_scale_pa = 500000.0
+speed_evidence = "Section 4 first-stage comparison paragraph (PDF p9), independently repeated inside Fig.6(b) (PDF p10); not Table 1's 2.6 m/s"
+viscosity_evidence = "Table 1, adopted for the numerical comparison; not inferred from ISO VG32 or Fig.8 temperature"
+normalization_evidence = "Nomenclature: Pbar_max=p_max/p_s; Fig.6 caption specifies the mid-plane"
+
+[reading]
+method = "Manual approximate marker centres on native embedded raster; CFD triangles, FEA circles. Low-eccentricity symbols overlap. No vector/raw author data available."
+x_epsilon_0p1_px = 206.0
+x_epsilon_0p8_px = 902.0
+y_pbar_0_px = 595.0
+y_pbar_100_px = 14.0
+pbar_half_width = 1.5
+uncertainty_note = "Conservative visual-reading band +/-1.5 normalized pressure (0.75 MPa), covering marker-centre/overlap and raster calibration ambiguity. Not experimental error bars or a statistical confidence interval."
+
+[[points]]
+eccentricity_ratio = 0.1
+x_px = 206.0
+fea_y_px = 578.0
+cfd_y_px = 582.0
+[[points]]
+eccentricity_ratio = 0.2
+x_px = 306.0
+fea_y_px = 559.0
+cfd_y_px = 565.0
+[[points]]
+eccentricity_ratio = 0.3
+x_px = 406.0
+fea_y_px = 540.0
+cfd_y_px = 543.0
+[[points]]
+eccentricity_ratio = 0.4
+x_px = 505.0
+fea_y_px = 507.0
+cfd_y_px = 517.0
+[[points]]
+eccentricity_ratio = 0.5
+x_px = 604.0
+fea_y_px = 462.0
+cfd_y_px = 480.0
+[[points]]
+eccentricity_ratio = 0.6
+x_px = 704.0
+fea_y_px = 387.0
+cfd_y_px = 409.0
+[[points]]
+eccentricity_ratio = 0.7
+x_px = 803.0
+fea_y_px = 250.0
+cfd_y_px = 283.0
+[[points]]
+eccentricity_ratio = 0.8
+x_px = 902.0
+fea_y_px = 74.0
+cfd_y_px = 89.0

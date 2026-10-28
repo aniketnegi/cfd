@@ -1,7 +1,15 @@
 include(joinpath(@__DIR__,"spectral.jl"))
+using TOML, SHA
 function profiles(directory)
     ispath(directory) && error("refusing overwrite")
     mkpath(directory)
+    files=[joinpath(@__DIR__,name) for name in
+        ("reference_profiles.jl","spectral.jl","table-6-5.csv","reference.toml")]
+    open(joinpath(directory,"inputs.toml"),"w") do io
+        TOML.print(io,Dict("suite"=>"independent-spectral-profiles","julia_version"=>string(VERSION),
+            "modes"=>320,"L_D"=>1.,"physical_validation"=>false,
+            "source_sha256"=>Dict(basename(path)=>bytes2hex(sha256(read(path))) for path in files));sorted=true)
+    end
     _,header=readdlm(joinpath(@__DIR__,"table-6-5.csv"),',';header=true)
     eccentricities=parse.(Float64,String.(vec(header)[2:end]))
     theta=collect(range(0.,2pi;length=8193))
