@@ -2,73 +2,82 @@
 include(joinpath(@__DIR__,"src/convergence.jl"))
 include(joinpath(@__DIR__, "..", "..", "experiment.jl"))
 
-const RUN_USAGE = """NAME
-    run.jl - run cylindrical signed full-film Reynolds on a named experiment
+using ArgParse, Printf
 
-SYNOPSIS
-    julia --project=. simulation/reynolds/run.jl --experiment NAME --run NAME
-        [--rpm RPM --viscosity-pa-s PA_S] [--sweep] [--replace]
+function run_settings()
+    settings = ArgParseSettings(
+        prog="julia --project=. simulation/reynolds/run.jl",
+        description="Solve signed full-film Reynolds pressure on a named unported cylinder.",
+        epilog="""New runs require --rpm and --viscosity-pa-s. Existing runs reuse
+        saved inputs; --replace permits rerunning but not changing those inputs.
+        Results are written under out/cases/EXPERIMENT/runs/RUN/.
+        Negative pressure is retained; this model does not include cavitation.
 
-DESCRIPTION
-    Read geometry and resolution from out/cases/NAME/experiment.toml and
-    verify the saved mesh checksum. Only an unported zero-angle cylinder is
-    supported. New runs require rpm and dynamic viscosity (Pa s); later
-    invocations may load them from runs/NAME/run.toml. An existing result is
-    never overwritten without --replace, and a saved run's inputs cannot
-    change under the same name. Positive/negative signed pressure is NOT JFO.
-    Options accept --key VALUE or --key=VALUE.
+        Example: --experiment demo-cylinder --run vg32 --rpm 2000 --viscosity-pa-s 0.02752
 
-REQUIRED OPTIONS
-    --experiment=NAME          existing named geometry case
-    --run=NAME                 safe identifier for operating conditions
-
-OPTIONS
-    --rpm=RPM                  signed journal speed, required for new runs
-    --viscosity-pa-s=PA_S      positive dynamic viscosity, required for new runs
-    --sweep                   also write a grid-convergence TSV for this run
-    --replace                 explicitly rerun the identical saved inputs
-    -h, --help                display this help and exit
-
-EXIT STATUS
-    0    Success.
-    2    Invalid arguments.
-"""
+        Exit status: 0 success, 1 execution failure, 2 invalid input.""",
+        exit_after_help=false,
+        exc_handler=(_, err) -> throw(ArgumentError(err.text)))
+    @add_arg_table! settings begin
+        "--experiment"
+            help = "existing geometry case"
+            metavar = "NAME"
+            arg_type = String
+            required = true
+            action = :append_arg
+        "--run"
+            help = "operating-condition run name"
+            metavar = "NAME"
+            arg_type = String
+            required = true
+            action = :append_arg
+        "--rpm"
+            help = "signed journal speed in revolutions per minute"
+            metavar = "RPM"
+            arg_type = Float64
+            range_tester = isfinite
+            action = :append_arg
+        "--viscosity-pa-s"
+            help = "positive dynamic viscosity in Pa s"
+            metavar = "PA_S"
+            arg_type = Float64
+            range_tester = x -> isfinite(x) && x > 0
+            action = :append_arg
+        "--sweep"
+            help = "also write a grid-convergence table"
+            action = :count_invocations
+        "--replace"
+            help = "rerun with the same saved inputs"
+            action = :count_invocations
+    end
+    add_arg_group!(settings, "output", "output"; exclusive=true)
+    @add_arg_table! settings begin
+        "--verbose", "-v"
+            help = "show timings and full numerical diagnostics"
+            action = :store_true
+        "--quiet", "-q"
+            help = "suppress routine output"
+            action = :store_true
+    end
+    return settings
+end
 
 function parse_run_args(args; cases_root=DEFAULT_CASES_ROOT)
-    opts = Dict{String,String}()
-    replace = false
-    sweep = false
-    i = 1
-    while i <= length(args)
-        argument = args[i]
-        if argument in ("--replace", "--sweep")
-            if argument == "--replace"
-                replace && throw(ArgumentError("repeated --replace"))
-                replace = true
-            else
-                sweep && throw(ArgumentError("repeated --sweep"))
-                sweep = true
-            end
-            i += 1
-            continue
-        end
-        key, value = if startswith(argument, "--") && occursin('=', argument)
-            i += 1
-            split(argument, '='; limit=2)
-        else
-            i < length(args) && !startswith(args[i+1], "--") ||
-                throw(ArgumentError("missing value for $argument"))
-            i += 2
-            (argument, args[i-1])
-        end
-        key in ("--experiment", "--run", "--rpm", "--viscosity-pa-s") ||
-            throw(ArgumentError("unknown option: $key"))
-        haskey(opts, key) && throw(ArgumentError("repeated option: $key"))
-        isempty(value) && throw(ArgumentError("missing value for $key"))
-        opts[key] = value
+    parsed = parse_args(args, run_settings())
+    isnothing(parsed) && return nothing # --help
+    # Preserve rejection of repeated scientific inputs rather than silently
+    # choosing the last occurrence.
+    opts = Dict{String,Any}()
+    for key in ("experiment", "run", "rpm", "viscosity-pa-s")
+        values = parsed[key]
+        length(values) <= 1 || throw(ArgumentError("repeated option: --$key"))
+        isempty(values) || (opts["--$key"] = only(values))
     end
-    all(haskey(opts, key) for key in ("--experiment", "--run")) ||
-        throw(ArgumentError("--experiment and --run are required"))
+    for key in ("replace", "sweep")
+        parsed[key] <= 1 || throw(ArgumentError("repeated --$key"))
+    end
+    replace, sweep = parsed["replace"] == 1, parsed["sweep"] == 1
+    verbose, quiet = parsed["verbose"], parsed["quiet"]
     exp = load_experiment(opts["--experiment"]; cases_root)
     exp.variant == "unported" || throw(ArgumentError("this runner supports unported cylinders only; surface-feed geometry does not define supply conditions"))
     iszero(exp.p.semicone_angle_deg) ||
@@ -84,14 +93,7 @@ function parse_run_args(args; cases_root=DEFAULT_CASES_ROOT)
     islink(run_dir) && throw(ArgumentError("run directory must not be a symlink: $run_dir"))
     config_path, result_path = joinpath(run_dir, "run.toml"), joinpath(run_dir, "full-film.vtk")
     sweep_path = joinpath(run_dir, "convergence.tsv")
-    numeric(key) = begin
-        haskey(opts, key) || return nothing
-        v = tryparse(Float64, opts[key])
-        !isnothing(v) && isfinite(v) || throw(ArgumentError("invalid finite number for $key"))
-        return v
-    end
-    rpm, mu = numeric("--rpm"), numeric("--viscosity-pa-s")
-    isnothing(mu) || mu > 0 || throw(ArgumentError("--viscosity-pa-s must be positive"))
+    rpm, mu = get(opts, "--rpm", nothing), get(opts, "--viscosity-pa-s", nothing)
     experiment_sha256 = mesh_hash(joinpath(exp.dir, "experiment.toml"))
     existing = isfile(config_path)
     if existing
@@ -125,17 +127,25 @@ function parse_run_args(args; cases_root=DEFAULT_CASES_ROOT)
     sweep && ispath(sweep_path) && !replace &&
         throw(ArgumentError("sweep already exists: $sweep_path (use --replace to rerun)"))
     return (; exp, run_name, run_dir, config_path, result_path, sweep_path, rpm, mu,
-            existing, sweep, replace, experiment_sha256)
+            existing, sweep, replace, verbose, quiet, experiment_sha256)
 end
 
 function main_run(args=ARGS; cases_root=DEFAULT_CASES_ROOT)
-    if "--help" in args || "-h" in args
-        print(RUN_USAGE)
-        return
-    end
     cfg = parse_run_args(args; cases_root)
-    r = solve_cylindrical_full_film(cfg.exp.p, cfg.exp.ntheta, cfg.exp.nz;
+    isnothing(cfg) && return nothing
+    execute_run(cfg)
+end
+
+function execute_run(cfg)
+    if !cfg.quiet
+        @printf(stderr, "run %s/%s grid=%dx%d rpm=%g viscosity=%g Pa s\n",
+            cfg.exp.data["name"], cfg.run_name, cfg.exp.ntheta, cfg.exp.nz, cfg.rpm, cfg.mu)
+        flush(stderr)
+    end
+    cfg.verbose && println(stderr, "mesh ", abspath(cfg.exp.mesh))
+    solve_seconds = @elapsed r = solve_cylindrical_full_film(cfg.exp.p, cfg.exp.ntheta, cfg.exp.nz;
                                     rpm=cfg.rpm, viscosity_pa_s=cfg.mu)
+    cfg.verbose && @printf(stderr, "solve %.3f s\n", solve_seconds)
     if !cfg.existing
         mkpath(joinpath(cfg.exp.dir, "runs"))
         mkdir(cfg.run_dir)
@@ -176,32 +186,65 @@ function main_run(args=ARGS; cases_root=DEFAULT_CASES_ROOT)
             push!(levels, (nt, nz))
         end
         length(levels) >= 2 || throw(ArgumentError("--sweep requires at least two dyadic grids ≥4×2"))
+        if !cfg.quiet
+            println(stderr, "sweep ", join(["$(n)x$(z)" for (n,z) in reverse(levels)], ", "))
+            flush(stderr)
+        end
         tmp_sweep, io_sweep = mktemp(cfg.run_dir)
         close(io_sweep)
         try
-            write_convergence(tmp_sweep, cfg.exp.p, reverse(levels);
+            sweep_seconds = @elapsed write_convergence(tmp_sweep, cfg.exp.p, reverse(levels);
                               rpm=cfg.rpm, viscosity_pa_s=cfg.mu)
             chmod(tmp_sweep, stat(cfg.config_path).mode & 0o777)
             mv(tmp_sweep, cfg.sweep_path; force=cfg.replace && ispath(cfg.sweep_path))
-            println("Wrote $(abspath(cfg.sweep_path))")
+            cfg.verbose && @printf(stderr, "sweep %.3f s\n", sweep_seconds)
         finally
             ispath(tmp_sweep) && rm(tmp_sweep)
         end
     end
-    println("Wrote $(abspath(cfg.result_path)) and $(abspath(diagnostics_path))")
-    println("Signed full-film pressure [Pa]: $(extrema(r.pressure_pa)); negative values are not cavitation")
-    println("Conservation diagnostics: $(r.diagnostics)")
+    if !cfg.quiet
+        @printf(stderr, "pressure min=%.6g max=%.6g Pa (signed)\n", extrema(r.pressure_pa)...)
+        @printf(stderr, "residual relative_l1=%.3g\n", r.diagnostics.relative_l1_cell_imbalance)
+        println(stderr, "output ", abspath(cfg.run_dir))
+    end
+    if cfg.verbose
+        for key in sort!(collect(keys(r.diagnostics)); by=string)
+            println(stderr, key, "=", getproperty(r.diagnostics, key))
+        end
+    end
+    return nothing
+end
+
+function run_cli(args=ARGS; cases_root=DEFAULT_CASES_ROOT)
+    cfg = try
+        parse_run_args(args; cases_root)
+    catch err
+        err isa InterruptException && return 130
+        println(stderr, "run.jl: ", sprint(showerror, err))
+        if err isa ArgumentError || err isa TOML.ParserError
+            println(stderr, "Try --help for usage.")
+            return 2
+        end
+        return 1
+    end
+    isnothing(cfg) && return 0
+    try
+        execute_run(cfg)
+    catch err
+        if err isa InterruptException
+            println(stderr, "run.jl: interrupted")
+            return 130
+        end
+        println(stderr, "run.jl: ", sprint(showerror, err))
+        if cfg.verbose
+            Base.show_backtrace(stderr, catch_backtrace())
+            println(stderr)
+        end
+        return 1
+    end
+    return 0
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    try
-        main_run()
-    catch err
-        if err isa ArgumentError
-            println(stderr, "run.jl: $(sprint(showerror, err))")
-            println(stderr, "Try 'julia --project=. simulation/reynolds/run.jl --help' for more information.")
-            exit(2)
-        end
-        rethrow()
-    end
+    exit(run_cli())
 end

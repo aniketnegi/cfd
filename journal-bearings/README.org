@@ -16,6 +16,7 @@ they are separate from the surface mesher and Reynolds solvers.
 
 * Setup and documentation
 
+Use Julia 1.13; the dependency manifest was generated with 1.13.2.
 Run commands from =journal-bearings/=:
 
 #+begin_src sh

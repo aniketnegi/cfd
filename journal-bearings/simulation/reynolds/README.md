@@ -38,7 +38,8 @@ mesh checksum, requires rpm and dynamic viscosity for a new run, and saves
 `run.toml`, `full-film.vtk` and `diagnostics.toml`. `--sweep` also writes a
 convergence TSV. Saved inputs cannot change under the same run name; reruns
 require `--replace`. A standalone mesh `--output FILE` has no experiment
-manifest and cannot be loaded as a named simulation case.
+manifest and cannot be loaded as a named simulation case. Use `-v` for timings
+and full diagnostics, or `-q` for errors only.
 
 Fixed-input cylindrical examples:
 
