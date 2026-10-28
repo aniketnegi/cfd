@@ -2,7 +2,7 @@
 # No Gangrade inlet or start-line alignment is selected implicitly.
 isdefined(@__MODULE__, :BearingParameters) || include(joinpath(@__DIR__,"../../bearing.jl"))
 isdefined(@__MODULE__, :housing_grid) || include(joinpath(@__DIR__,"../../mesh/2d/grid.jl"))
-isdefined(@__MODULE__, :solve_swift_stieber) || include(joinpath(@__DIR__,"../../simulation/reynolds/swift_stieber.jl"))
+isdefined(@__MODULE__, :solve_swift_stieber) || include(joinpath(@__DIR__,"../../simulation/reynolds/src/swift_stieber.jl"))
 
 function fig6_reynolds(p,nt,nz;rpm=2000.0,viscosity_pa_s=0.0277,
         end_pressure_pa=(0.0,0.0),cavitation_pressure_pa=0.0,

@@ -171,13 +171,12 @@ not an alternative inlet construction.
 julia --project=. mesh/tests/runtests.jl
 ```
 
-The runner executes each meshing suite in a fresh single-threaded Julia process,
-with bounds checking, so includes/globals cannot leak between suites. It covers
-CLI/export (including cylindrical unported and fitted runs from an unrelated
-working directory), requested counts, supplied geometry, independent
-chart/radius/chord oracles, analytic unported quality, actual motion windows, seam/boundary
-invariants, derivatives and observer/trace/DEBUG independence. A suite can also
-be run directly, e.g. `mesh/tests/practical_acceptance.jl`.
+Checks cover geometry, mesh quality, placement convergence, boundary invariants
+and command-line exports. Individual suites can also be run directly:
+
+```sh
+julia --project=. mesh/tests/practical_acceptance.jl
+```
 
 To record and compare mesh snapshots, use a **fresh** baseline:
 
@@ -187,13 +186,9 @@ julia --project=. --threads=1 --gcthreads=1 mesh/tests/meshing_snapshot.jl recor
 julia --project=. --threads=1 --gcthreads=1 mesh/tests/meshing_snapshot.jl compare out/snapshot.toml
 ```
 
-Use identical threading controls for both commands. On the tested Julia build,
-`OPENBLAS_NUM_THREADS=1` alone still leaves BLAS at eight threads; setting
-`OMP_NUM_THREADS=1` also is necessary. Fine fitted optimization can amplify
-thread-dependent floating-point differences.
-
-This hashes every public mesh field and exact VTK bytes. Never overwrite an old
-baseline or weaken comparison to hide an intentional algorithm change.
+Use the same threading controls for both commands: fitted optimization is
+sensitive to floating-point differences. Comparison checks every public mesh
+field and the exported VTK bytes against the saved baseline.
 
 ## Optional numerical diagnostics
 

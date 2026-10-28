@@ -77,7 +77,7 @@ function run_fitted(out)
     end
     files=["expts/conical-fitted-inlet/"*s for s in ("mesh.jl","operator.jl","checks.jl","run.jl","plot.py")]
     append!(files,["expts/surface-inlet-hex/mesh.jl","bearing.jl","mesh/2d/grid.jl"])
-    append!(files,["simulation/reynolds/"*s for s in ("conical_equilibrium.jl","conical_jfo.jl","conical.jl","jfo_active_set.jl","cylindrical.jl","full_film.jl","pressure_vtk.jl")])
+    append!(files,["simulation/reynolds/src/"*s for s in ("conical_equilibrium.jl","conical_jfo.jl","conical.jl","jfo_active_set.jl","cylindrical.jl","full_film.jl","pressure_vtk.jl")])
     record=Dict("status"=>"Diagnostic mesh/operator comparison only; NOT an accepted production or 3D Hex8 mesh",
         "displacement_m"=>collect(displacement),"eccentricity_ratio"=>pose.parameters.eccentricity_ratio,
         "radial_clearance_m"=>pose.radial_clearance_m,"minimum_normal_gap_m"=>pose.minimum_normal_gap_m,

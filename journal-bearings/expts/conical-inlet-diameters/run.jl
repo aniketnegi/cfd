@@ -136,7 +136,7 @@ function diameter_geometry(out)
     append!(sources,["mesh/2d/"*s for s in ("quality.jl","metrics.jl","inlet/controlled.jl","inlet/placement.jl","inlet/seed.jl")])
     append!(sources,["expts/conical-inlet-diameters/"*s for s in ("run.jl","operator_checks.jl","plot.py")])
     append!(sources,["expts/conical-fitted-inlet/"*s for s in ("mesh.jl","operator.jl","checks.jl")])
-    append!(sources,["simulation/reynolds/"*s for s in ("conical_equilibrium.jl","conical_jfo.jl","conical.jl","jfo_active_set.jl","cylindrical.jl","full_film.jl","pressure_vtk.jl")])
+    append!(sources,["simulation/reynolds/src/"*s for s in ("conical_equilibrium.jl","conical_jfo.jl","conical.jl","jfo_active_set.jl","cylindrical.jl","full_film.jl","pressure_vtk.jl")])
     push!(sources,"expts/surface-inlet-hex/mesh.jl")
     meta=Dict("diameters_mm"=>collect(DIAMETERS),"levels"=>[1,2,4],
         "status"=>"Geometry and manufactured-field study; no physical diameter/load tuning or equilibrium",

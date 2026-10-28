@@ -3,13 +3,13 @@
 Rigid, steady, isothermal, incompressible Newtonian lubrication models.
 Geometry inputs use millimetres; solver quantities use SI units.
 
-| Model | Documentation | Implementation |
-|---|---|---|
-| Cylindrical/conical signed full film | This page; [formulation](conical-formulation.md) | `full_film.jl` |
-| Cylindrical/conical pressure-only cavitation | [Swift–Stieber](swift-stieber.md) | `swift_stieber.jl` |
-| 1D mass-conserving cavitation | [Slider benchmark](jfo-slider.md) | `jfo_slider.jl` |
-| Periodic conical mass-conserving cavitation | [JFO formulation](conical-jfo.md) | `conical_jfo.jl` |
-| Rigid floating-bush force balance | [Equilibrium](conical-equilibrium.md) | `conical_equilibrium.jl` |
+| Model                                        | Documentation                                         | Implementation           |
+|----------------------------------------------|-------------------------------------------------------|--------------------------|
+| Cylindrical/conical signed full film         | This page; [formulation](docs/conical-formulation.md) | `src/full_film.jl`           |
+| Cylindrical/conical pressure-only cavitation | [Swift–Stieber](docs/swift-stieber.md)                | `src/swift_stieber.jl`       |
+| 1D mass-conserving cavitation                | [Slider benchmark](docs/jfo-slider.md)                | `src/jfo_slider.jl`          |
+| Periodic conical mass-conserving cavitation  | [JFO formulation](docs/conical-jfo.md)                | `src/conical_jfo.jl`         |
+| Rigid floating-bush force balance            | [Equilibrium](docs/conical-equilibrium.md)            | `src/conical_equilibrium.jl` |
 
 The full-film and Swift–Stieber solvers accept supplied unported tensor meshes,
 including adjusted spacing, and share one pressure assembly. Count-based
@@ -18,21 +18,19 @@ construct uniform grids from counts; fitted meshes are unsupported.
 See [solver support](../../docs/solver-support.md) for integration limits.
 Thermal effects, elastic deformation and fluid–structure coupling are absent.
 
+Implementation lives in `src/`; `run.jl` is the named-case entry point.
+`src/full_film.jl` owns shared pressure assembly, fluxes and forces.
+`src/cylindrical.jl` and `src/conical.jl` provide count-based convenience APIs.
+
 ## Commands
 
-From `journal-bearings/`, run each test in its own process:
+Run tests from `journal-bearings/`:
 
 ```sh
-julia --project=. --check-bounds=yes simulation/reynolds/full_film_checks.jl
-julia --project=. --check-bounds=yes simulation/reynolds/swift_stieber_checks.jl
-julia --project=. --check-bounds=yes simulation/reynolds/checks.jl
-julia --project=. --check-bounds=yes simulation/reynolds/conical_checks.jl
-julia --project=. --check-bounds=yes simulation/reynolds/jfo_slider_checks.jl
-julia --project=. --check-bounds=yes simulation/reynolds/conical_jfo_checks.jl
-julia --project=. --check-bounds=yes simulation/reynolds/conical_equilibrium_checks.jl
-julia --project=. --check-bounds=yes simulation/reynolds/run_checks.jl
-julia --project=. --check-bounds=yes expts/gangrade-figure6/reynolds_checks.jl
+julia --project=. simulation/tests/runtests.jl
 ```
+
+See [test selection](../tests/README.md) for individual suites.
 
 The named `run.jl` CLI supports only unported, zero-angle cylinders. See the
 [root README](../../README.org) for mesh/run commands. It verifies the saved
@@ -45,20 +43,19 @@ manifest and cannot be loaded as a named simulation case.
 Fixed-input cylindrical examples:
 
 ```sh
-julia --project=. simulation/reynolds/convergence.jl
-julia --project=. simulation/reynolds/cylindrical.jl
+julia --project=. simulation/examples/cylindrical_convergence.jl
+julia --project=. simulation/examples/cylindrical_full_film.jl
 ```
 
-These write under `out/cases/cylindrical-unported-e0p6/`. The result VTK includes
-its geometry, gap and signed gauge pressure and can be opened independently.
-Conical and slider verification scripts are documented on their model pages.
+See [examples](../examples/README.md) for inputs and outputs, or
+[verification](../verification/README.md) for reference comparisons.
 
 ## Supplied-mesh full-film API
 
 ```julia
 include("bearing.jl")
 include("mesh/2d/grid.jl")
-include("simulation/reynolds/full_film.jl")
+include("simulation/reynolds/src/full_film.jl")
 
 p = BearingParameters(journal_midpoint_radius=50., bearing_length=100.,
     radial_clearance=.05, semicone_angle_deg=10., eccentricity_ratio=.6)
@@ -77,7 +74,7 @@ updated radial gaps with `eccentricity_angle_rad`; reusing a result grid with
 a different angle refreshes those gaps without moving housing vertices. The
 solve keyword still defaults to zero, regardless of the input grid's annotation.
 
-For export, separately include `simulation/reynolds/pressure_vtk.jl` and call
+For export, separately include `simulation/reynolds/src/pressure_vtk.jl` and call
 `write_conical_pressure_vtk(path,result)` for pressure and normal gap.
 The solver core loads no exporter, cavitation code or experimental mesher.
 
@@ -127,7 +124,7 @@ finite-width solution.
 
 Independent finite-width classical references, printed Donaldson table inputs,
 whole-field comparisons and refinement-analysis checks are available in
-[full-film verification](../../expts/full-film-verification/README.md).
+[full-film verification](../verification/full-film/README.md).
 The benchmark explicitly distinguishes classical cosine geometry from the
 production circle-intersection model. Its generated tables and profiles belong
 to each run directory, not the solver API.

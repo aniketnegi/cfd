@@ -66,8 +66,8 @@ reading convention, not experimental uncertainty or a confidence interval.
 A local PDF/raster is optional evidence for auditing those readings, not a
 dependency of the numerical solver or its verification tests.
 
-Use the maintained [Swift–Stieber API](../simulation/reynolds/swift-stieber.md)
-for pressure-only calculations and the [verification tools](../expts/swift-stieber-verification/README.md)
+Use the maintained [Swift–Stieber API](../simulation/reynolds/docs/swift-stieber.md)
+for pressure-only calculations and the [verification tools](../simulation/verification/swift-stieber/README.md)
 for independently checked cylindrical/conical test problems. The small
 `reynolds_cavitation.jl` count adapter delegates to that same shared solver;
 `reynolds_checks.jl` exercises it without loading a Gangrade comparison run.

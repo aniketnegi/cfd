@@ -23,6 +23,7 @@ julia --project=. -e 'using Pkg; Pkg.instantiate()'
 #+end_src
 
 - [[file:mesh/2d/README.md][Surface meshing]]: API, units, acceptance and examples.
+- [[file:simulation/README.md][Simulation]]: solver interfaces and numerical verification.
 - [[file:simulation/reynolds/README.md][Reynolds models]]: equations, checks and commands.
 - [[file:docs/solver-support.md][Solver support]]: mesh compatibility and known integration limits.
 - [[file:docs/gangrade-reference.md][Gangrade reference]]: published inputs and comparison limits.
@@ -80,6 +81,7 @@ unsupported. Both CLIs provide =--help= / =-h= and accept =--name VALUE= or
 
 #+begin_src sh
 julia --project=. mesh/tests/runtests.jl
+julia --project=. simulation/tests/runtests.jl
 #+end_src
 
-Solver test commands are listed in [[file:simulation/reynolds/README.md][simulation/reynolds/README.md]].
+See [[file:simulation/tests/README.md][simulation tests]] for individual suites.

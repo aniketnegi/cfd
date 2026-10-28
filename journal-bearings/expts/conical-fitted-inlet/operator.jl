@@ -1,6 +1,6 @@
 # Experimental conservative multi-point surface finite volumes.
 include(joinpath(@__DIR__,"mesh.jl"))
-include(joinpath(@__DIR__,"../../simulation/reynolds/conical_equilibrium.jl"))
+include(joinpath(@__DIR__,"../../simulation/reynolds/src/conical_equilibrium.jl"))
 
 function fitted_operator(m,pose;rpm=2000.,viscosity=.0277,unit_mobility=false,
         boundary_pressure=(x,y,tag)->tag==:feed ? 5e5 : 0.,

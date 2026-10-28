@@ -1,5 +1,5 @@
 using Test
-include(joinpath(@__DIR__,"../../simulation/reynolds/jfo_slider.jl"))
+include(joinpath(@__DIR__,"../../simulation/reynolds/src/jfo_slider.jl"))
 include(joinpath(@__DIR__,"reynolds_cavitation.jl"))
 
 @testset "Independent Reynolds rupture reference (zero-pressure inlet/outlet slider)" begin

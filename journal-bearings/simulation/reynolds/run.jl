@@ -1,5 +1,5 @@
 # Named-case CLI for the verified *cylindrical, unported, signed full-film* model.
-include(joinpath(@__DIR__, "convergence.jl"))
+include(joinpath(@__DIR__,"src/convergence.jl"))
 include(joinpath(@__DIR__, "..", "..", "experiment.jl"))
 
 const RUN_USAGE = """NAME
