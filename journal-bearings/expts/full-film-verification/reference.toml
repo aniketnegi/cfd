@@ -1,0 +1,11 @@
+title = "Incompressible journal bearings with combined hydrostatic-hydrodynamic action"
+author = "Robert Reece Donaldson"
+year = 1965
+url = "https://dspace.mit.edu/handle/1721.1/92992"
+pdf_sha256 = "4cc1c22c47097d8d96ca1314c5db08bc9ebb7b095b1d03c31f6405afee53dca8"
+table = "6.5, printed p152 / PDF p170"
+equations = "Signed periodic rotation component; zero axial-end pressure"
+classical_gap = "c*(1+epsilon*cos(theta)), single shaft radius"
+production_gap = "Unchanged circle-intersection gap, separate journal/housing radii"
+normalization = "Finite load / infinite-width load for the SAME model"
+series = "Section5.3.1: converged eigenpairs followed by finite Fourier/eigenfunction truncation"

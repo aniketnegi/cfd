@@ -124,30 +124,17 @@ symmetry, signed pressure, linear residuals, boundary balance and the
 San Andrés short-bearing asymptote at L/D=0.01. That asymptote is not an exact
 finite-width solution.
 
-The five-grid L/D=1 example compares each coarse pressure with the average of
-its four refined cells. `E_p` is the relative L2 mismatch. Force is the signed
-transverse pressure integral on a nominal cylindrical journal, not physical
-load capacity.
+Independent finite-width classical references, printed Donaldson table inputs,
+whole-field comparisons and refinement-analysis checks are available in
+[full-film verification](../../expts/full-film-verification/README.md).
+The benchmark explicitly distinguishes classical cosine geometry from the
+production circle-intersection model. Its generated tables and profiles belong
+to each run directory, not the solver API.
 
-| θ×z cells | max p (MPa gauge) | signed Fy (N) | E_p from coarser grid |
-|---|---:|---:|---:|
-| 32×16 | 16.597653 | 112518.01 | — |
-| 64×32 | 16.668570 | 111806.08 | 0.013143 |
-| 128×64 | 16.654109 | 111627.17 | 0.003276 |
-| 256×128 | 16.657060 | 111582.39 | 0.0008183 |
-| 512×256 | 16.655752 | 111571.19 | 0.0002045 |
-
-Approximately fourfold reduction indicates second-order self-convergence,
-not an absolute error bound. At 512×256, min/max signed pressure is ±16.655752
-MPa and relative global imbalance is about 2.2e-14. Positive and negative end
-flows cancel; their absolute sum is a residual normalizer, not oil consumption.
-
-Test guards require the second refinement mismatch to be <0.4 times the first
-and <0.005, L1/global residuals <1e-11, and max-cell normalized residual <1e-10.
-The short-bearing check uses 24×12, 48×24 and 96×48; its finest relative L2 error
-is about 0.0004083 against a 0.001 threshold. These are numerical regression
-guards, not physical accuracy specifications. The API minimum of 4×2 cells is
-not a verified operating resolution.
+Self-convergence is not an absolute error bound. Positive and negative signed
+end flows can cancel; their absolute sum is not oil consumption. Regression
+thresholds are numerical guards, not physical accuracy specifications, and the
+API minimum of 4×2 cells is not a verified operating resolution.
 
 No independent finite-width experimental pressure field is matched by this
 cylindrical example. It is not a [Gangrade reproduction](../../docs/gangrade-reference.md).

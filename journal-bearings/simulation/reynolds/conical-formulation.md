@@ -229,7 +229,7 @@ are 1.76e-4 and 1.29e-4 for positive and negative rotation.
 - Housing-force integrals and pressure/force self-convergence.
 - Invalid inputs, scalar field sizes and VTK normal-gap output.
 
-## Commands and numerical results
+## Commands
 
 From `journal-bearings/`:
 
@@ -265,31 +265,14 @@ The demonstration uses assumed 2000 rpm and nominal ISO VG 32 at 40 °C:
 `nu=32e-6 m²/s`, separately assumed `rho=860 kg/m³`, hence `mu=0.02752 Pa·s`.
 It does not establish the rig's oil temperature or density.
 
-Numerical results:
+The analytical/manufactured checks above run without saved cases. Independent
+full-film reference comparisons and geometry/mutation diagnostics are documented
+in [full-film verification](../../expts/full-film-verification/README.md).
 
-- Centred 10° cone, 128 axial cells: relative L2 pressure error **4.78e-6**;
-  maximum relative axial-flow error **1.33e-6**, against the analytical result.
-  Both errors decrease by about 4× per refinement.
-- Manufactured 2D field, 16×8 through 128×64: relative pressure errors
-  **0.0138161, 0.00350343, 0.000879018, 0.000219953**.
-- Eccentric cone, five grids below: area-weighted fine-to-coarse comparison
-  gives observed second-order convergence, not an absolute error bound.
-
-| Grid | max signed p (MPa) | housing Fy (N) | relative pressure mismatch from previous |
-| --- | ---: | ---: | ---: |
-| 32×16 | 17.400746 | -117878.22 | — |
-| 64×32 | 17.436855 | -117272.79 | 0.0131067 |
-| 128×64 | 17.414731 | -117120.10 | 0.00326819 |
-| 256×128 | 17.414783 | -117081.85 | 0.000816569 |
-| 512×256 | 17.413556 | -117072.28 | 0.000204113 |
-
-At 512×256, relative L1 cell imbalance is **6.21e-15** and relative global
-imbalance **1.98e-14**. The minimum pressure is approximately **-17.41 MPa
-GAUGE**: the negative branch and the signed force above are deliberately
-nonphysical verification outputs. The approximately zero axial force in this
-antisymmetric signed solution does not show that a cavitating cone cannot
-carry axial load. The prescribed offset is not the equilibrium for 1000 N.
-These signed fields are not a comparison with Gangrade's measured pressure.
+Signed pressure fields are not a comparison with measured Gangrade pressures.
+An approximately zero axial force in an antisymmetric signed solution does not
+show that a cavitating cone cannot carry axial load. Prescribed eccentricity
+does not establish equilibrium with an applied load.
 
 For cavitation with an explicit supply contract, see [conical JFO](conical-jfo.md).
 Ambient ends alone do not guarantee replenishment when cavitation pressure is

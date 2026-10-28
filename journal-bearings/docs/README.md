@@ -3,6 +3,8 @@
 - [Surface meshing](../mesh/2d/README.md): API, units, acceptance, CLI and tests.
 - [Reynolds solvers](../simulation/reynolds/README.md): models, commands and verification.
 - [Solver support](solver-support.md): mesh compatibility and integration limits.
+- [Full-film verification](../expts/full-film-verification/README.md): independent
+  classical reference, geometry comparisons and reproducible benchmark commands.
 - [Gangrade reference](gangrade-reference.md): published inputs, boundary ambiguity
   and the scope of the comparison experiments.
 
