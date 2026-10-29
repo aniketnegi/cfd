@@ -1,4 +1,4 @@
-# 2D periodic conical mass-conserving cavitation
+# 2D cylindrical/conical mass-conserving cavitation
 
 ## What is implemented
 
@@ -7,15 +7,23 @@ pressure **and liquid content** around the circumference and along the cone.
 It uses the [conical surface formulation](conical-formulation.md);
 it is not a stack of independent slider calculations.
 
-The verification case uses a broad artificial reservoir patch, not a physical
-inlet. Its prescribed position and pressure boundaries are numerical test inputs.
+Unported meshes may use above-cavity end pressures or explicit numerical
+reservoir cells. Fitted land meshes use the actual inlet rim as a pressure
+boundary. Position is prescribed; neither feed model solves a supply passage.
 
 The [floating-bush driver](conical-equilibrium.md) uses this solver for rigid
 force balance. `eccentricity_angle_rad` rotates the gap relative to the fixed
 housing mesh/feed; its default is zero (+X).
 
 `jfo_active_set.jl` supplies the pressure/void active-set kernel shared with
-the [1D slider](jfo-slider.md). The two solvers have separate flux assemblies.
+the [1D slider](jfo-slider.md). The 1D and surface solvers have separate flux assemblies.
+
+`assemble_conical_jfo(grid; ...)` and `solve_conical_jfo(grid; ...)` consume a
+supplied tensor or fitted land mesh and reuse `assemble_full_film`. The
+count-based `(p,nt,nz; ...)` forms construct `housing_grid(p,nt,nz)` and delegate
+to the same implementation. Tensor spacing may be nonuniform. Fitted meshes
+require `feed_pressure_pa > cavitation_pressure_pa`; `feed_cells` is rejected
+because the opening is represented by boundary faces, not reservoir cells.
 
 ## Equations and supply contract
 
@@ -49,8 +57,9 @@ inside a cavity, and content is one inside full film.
 
 **Supply is mandatory for this steady public solver:**
 
-- Axial reservoir pressure may be at or above p_cav. At least one end or
-  an explicit internal reservoir must be strictly above p_cav.
+- Axial reservoir pressure may be at or above p_cav. An unported mesh requires
+  at least one end or an explicit internal reservoir strictly above p_cav.
+  A fitted mesh requires an explicit rim pressure strictly above p_cav.
 - With no feed and both ends at p_cav, the solver **rejects the case** rather
   than inventing a circulating underfilled inventory or calling it flooded.
   A separate inventory/transient formulation would be required to select such
@@ -74,7 +83,37 @@ solve. No pressure or content clipping follows it. Nonconvergence, singular
 linear systems or failed bounds/continuity checks cause failure; global
 convergence for arbitrary cases is not asserted.
 
-### Feed-flow accounting
+### Fitted face transport
+
+`src/fitted_jfo.jl` reuses the existing nonorthogonal pressure faces. For each
+oriented face, positive flow leaves its owner. Let `c` be its signed fully-liquid
+Couette flow and `C` select the upstream cell with coefficient `c`. An incoming
+boundary has no upstream film unknown: its reservoir carries fill=1.
+
+```text
+q = pressure_flux * P + constant - C * v,
+A = divergence * pressure_flux,
+B = -divergence * C,
+b = -divergence * constant.
+```
+
+`constant` includes the fully-liquid Couette contribution and prescribed
+pressure traces. Thus `v=0` reduces to the same signed full-film equation.
+Slanted internal faces and the opening rim both carry circumferential Couette
+transport. It is not omitted merely because a face is called a feed boundary.
+
+Fitted results contain `face_flow_m3_s` and tagged `boundary_outflow_m3_s`, not
+rectangular theta/z arrays or fictitious feed cells. All boundary flows are
+signed outward; negative values enter the land. Gross feed injection, gross
+return and net feed are distinct. The end-plus-rim balance is zero; end flow
+alone need not be. Pressure mobility is unchanged, including its implicit
+nonorthogonal correction. Its matrix need not be symmetric or monotone, so no
+global active-set convergence guarantee follows from the tensor case.
+
+`write_conical_jfo_vtk` exports either layout. Fitted rim lines are annotations,
+not pressure cells; their pressure/content/gap scalars are NaN.
+
+### Tensor reservoir-cell flow accounting
 
 After reconstructing face flows independently of matrix multiplication:
 
@@ -96,9 +135,27 @@ reservoir-pressure conductance flow scale. Global balance uses gross feed/end
 exchange, with that local scale as a zero-flow fallback. Values and normalizers
 are saved, so roundoff balances cannot be mistaken for discretization errors.
 
-## Verification, not a published 2D benchmark match
+## Conical verification
 
-Checks cover:
+[Conical transport verification](../../verification/jfo/conical/README.md)
+checks end-supplied tensor cones against independent expanded nodal finite
+differences, the cylindrical limit, and continuous pressure/content manufactured
+fields. The same procedure checks actual 7mm fitted rims on cylinders and
+10° cones, both rotations, and pressure/content/boundary-flow/force refinement.
+Fitted physical self-comparisons sample common land at the actual 25, 50 and
+75mm planes, not a reshaped tensor or a whole-field norm. Manufactured errors
+use all land-cell centres and physical area weights. Independent projected
+Gauss–Seidel checks the fitted mixed algebra; it is not a second spatial method.
+
+The rectangular reservoir and unported manufactured fixtures below are separate
+checks. The rectangle is not a resolved physical feed.
+
+Finite-cylinder submerged/reference checks are documented in the
+[cylindrical JFO study](../../verification/jfo/cylindrical/README.md). Its gross
+outward end exchange sums positive **individual outward face flows**, before
+combining the ends; signed net end flow is a separate observable.
+
+Conical checks cover:
 
 - Arbitrary pressure/content fields: matrix residual versus independently
   reconstructed face divergence; periodic seam and row-wise transport conservation.

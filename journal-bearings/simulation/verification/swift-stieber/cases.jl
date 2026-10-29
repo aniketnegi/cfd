@@ -99,8 +99,11 @@ function fresh_output(path;suite)
     ispath(path) && error("refusing overwrite: $path")
     mkpath(path)
     files=["cli.jl","simulation/verification/command.py","bearing.jl","mesh/2d/grid.jl","mesh/2d/quality.jl","mesh/2d/metrics.jl",
-        "simulation/reynolds/src/full_film.jl","simulation/reynolds/src/swift_stieber.jl",
+        "simulation/reynolds/src/full_film.jl","simulation/reynolds/src/face_fluxes.jl",
+        "simulation/reynolds/src/fitted_full_film.jl","simulation/reynolds/src/swift_stieber.jl",
         "simulation/reynolds/src/jfo_active_set.jl","simulation/reynolds/src/jfo_slider.jl",
+        "mesh/2d/surface_feed.jl","mesh/2d/inlet/controlled.jl",
+        "mesh/2d/inlet/seed.jl","mesh/2d/inlet/placement.jl",
         "Project.toml","Manifest.toml"]
     append!(files,[relpath(joinpath(@__DIR__,name),SOURCE) for name in readdir(@__DIR__)
         if endswith(name,".jl") || endswith(name,".py") || endswith(name,".csv") || endswith(name,".toml")])

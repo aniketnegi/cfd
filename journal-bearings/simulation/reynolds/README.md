@@ -8,18 +8,28 @@ Geometry inputs use millimetres; solver quantities use SI units.
 | Cylindrical/conical signed full film         | This page; [formulation](docs/conical-formulation.md) | `src/full_film.jl`           |
 | Cylindrical/conical pressure-only cavitation | [Swift–Stieber](docs/swift-stieber.md)                | `src/swift_stieber.jl`       |
 | 1D mass-conserving cavitation                | [Slider benchmark](docs/jfo-slider.md)                | `src/jfo_slider.jl`          |
-| Periodic conical mass-conserving cavitation  | [JFO formulation](docs/conical-jfo.md)                | `src/conical_jfo.jl`         |
+| Periodic cylinder/cone mass-conserving cavitation | [JFO formulation](docs/conical-jfo.md)                | `src/conical_jfo.jl`         |
 | Rigid floating-bush force balance            | [Equilibrium](docs/conical-equilibrium.md)            | `src/conical_equilibrium.jl` |
 
-The full-film and Swift–Stieber solvers accept supplied unported tensor meshes,
-including adjusted spacing, and share one pressure assembly. Count-based
-full-film functions delegate to that assembly. JFO and equilibrium interfaces
-construct uniform grids from counts; fitted meshes are unsupported.
+The full-film and Swift–Stieber solvers accept supplied unported tensor and
+fitted land meshes. Tensor spacing may be uniform or adjusted; a fitted rim
+requires explicit `feed_pressure_pa`. Both use the shared pressure assembly;
+count-based full-film functions delegate to it.
+JFO accepts supplied tensor and fitted land grids, with a count-based tensor
+convenience form. Its fitted rim requires pressure strictly above cavitation
+and carries fully liquid incoming transport.
+Equilibrium interfaces still construct uniform grids from counts.
 See [solver support](../../docs/solver-support.md) for integration limits.
-Thermal effects, elastic deformation and fluid–structure coupling are absent.
+These fluid solvers do not solve structures themselves.
+[Fixed-position housing FSI](../fsi/docs/steady.md) couples JFO to 3D linear
+elasticity of the housing and optionally the solid journal. Nominal position is
+prescribed; thermal effects are absent.
 
 Implementation lives in `src/`; `run.jl` is the named-case entry point.
 `src/full_film.jl` owns shared pressure assembly, fluxes and forces.
+`src/face_fluxes.jl` defines the oriented face-flow contract;
+`src/fitted_full_film.jl` supplies nonorthogonal fitted coefficients and forces;
+`src/fitted_jfo.jl` adds conservative signed upwind content transport on those faces.
 `src/cylindrical.jl` and `src/conical.jl` provide count-based convenience APIs.
 
 ## Commands
@@ -81,8 +91,9 @@ The solver core loads no exporter, cavitation code or experimental mesher.
 
 Angular coordinates are radians and axial coordinates are mm in the mesh;
 the solver converts lengths to metres. Tensor metadata must match the supplied
-vertices/connectivity. Fitted meshes reject rather than being reshaped or
-silently replaced. The named CLI remains cylindrical and uniform-grid only.
+vertices/connectivity. [Fitted full film](docs/fitted-full-film.md) requires an
+explicit `feed_pressure_pa` at the opening rim and returns per-face flows,
+not rectangular arrays. The named CLI remains cylindrical and uniform-grid only.
 
 ## Cylindrical equations
 

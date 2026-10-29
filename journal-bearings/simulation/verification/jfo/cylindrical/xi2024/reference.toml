@@ -1,0 +1,49 @@
+[source]
+authors = ["Yinhu Xi", "Jinhui Deng", "Yiling Li"]
+year = 2024
+title = "A new method to solve the Reynolds equation including mass-conserving cavitation by physics informed neural networks (PINNs) with both soft and hard constraints"
+doi = "10.1007/s40544-023-0791-1"
+url = "https://link.springer.com/article/10.1007/s40544-023-0791-1"
+pdf_url = "https://link.springer.com/content/pdf/10.1007/s40544-023-0791-1.pdf"
+pdf_sha256 = "06a4e153f002c4d0676c5b1002cb4abf9048cc973a5d2380a6aef36ca25d95af"
+section = "3.3, printed p1171/PDF p7; Fig.7"
+reference_type = "Published numerical pressure curves, NOT experimental measurements or author raw arrays"
+rom_reference = "Rom2023, doi10.1016/j.triboint.2022.108141; red markers are its results AS REPRODUCED in Xi2024, not audited original FD data"
+
+[published_inputs]
+circumference_m = 0.08
+circumference_note = "Fig.7 x axis and Eq.18 establish circumference80mm; the prose diameter80/pi omits its unit"
+axial_length_m = 0.02
+radial_clearance_m = 0.0000175
+eccentricity_ratio = 0.8
+viscosity_pa_s = 0.014
+surface_speed_m_s = 0.2
+boundary_absolute_pa = 100000.0
+cavitation_absolute_pa = 0.0
+boundary_scope = "Eq.18 prescribes pressure on ALL FOUR unwrapped rectangle edges; not ungrooved periodic flow"
+pressure_reference = "Absolute; alternatively ambient0gauge, cavity-100000Pa gauge. Do NOT use both as zero."
+profile_axial_m = 0.01
+
+[fixture_assumptions]
+gap = "h=c*(1+epsilon*cos(2*pi*x/circumference)); single nominal radius"
+angular_origin = "Fixed conventional maximum-gap supply seam, minimum at x=.04m; no fitted phase"
+source_limit = "Xi section3.3 omits the journal-gap equation/angle origin and refers to Rom; original Rom full text not recovered. Gap/origin remain declared assumptions, so agreement is CONDITIONAL on this convention."
+production_comparison = "Separately labelled unchanged circle-intersection gap and journal/housing radii at the same benchmark inputs"
+angular_boundary_discretization = "Verification-only exact seam cut: retain all production internal coefficients, replace periodic face by two half-cell pressure boundaries; incoming liquid fill1, outgoing uses adjacent film content. No finite-width cell reservoir."
+
+[digitization]
+image_size = [477, 392]
+image_rgb_sha256 = "c85688957060feaf788148893b722b2c1a8ad905b6ab74e0c2ccafe0e554bd0d"
+csv_sha256 = "8a0b5f1555ef0a3b8de2b7431e3c47daf502daff06d1654194c1e357b0372afa"
+rom_isolated_markers = 24
+xi_visible_curve_points = 187
+merged_marker_components_excluded = 2
+x_tick_pixels = [64.0, 162.0, 261.0, 359.0, 457.0]
+x_tick_m = [0.0, 0.02, 0.04, 0.06, 0.08]
+y_tick_pixels = [325.0, 276.0, 227.0, 178.0, 129.0, 79.0, 30.0]
+y_tick_pa = [0.0, 200000.0, 400000.0, 600000.0, 800000.0, 1000000.0, 1200000.0]
+reading_halfwidth_pixels = 1.0
+x_reading_halfwidth_m = 0.00020345816792439553
+pressure_reading_halfwidth_pa = 4066.779738247729
+scope = "One-pixel coordinate-reading envelope, NOT experimental uncertainty or a bound on the PINN/model error"
+trace_handling = "Do not invent Xi points beneath red markers; exclude merged red components; preserve near-zero raster estimates rather than clipping pressures"

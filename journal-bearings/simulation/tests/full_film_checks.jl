@@ -232,8 +232,9 @@ include(joinpath(@__DIR__,"../reynolds/src/pressure_vtk.jl"))
 end
 
 include(joinpath(@__DIR__, "../../mesh/2d/surface_feed.jl"))
-@testset "Fitted meshes cannot masquerade as tensor grids" begin
+@testset "Fitted meshes require an explicit rim pressure" begin
     fitted = surface_feed_grid(parameters(),128,64;feed_diameter=5.,feed_z=50.)
     @test fitted.acceptance.accepted
+    @test_throws ArgumentError full_film_axes(fitted)
     @test_throws ArgumentError solve_full_film(fitted;rpm=0.,viscosity_pa_s=.0277)
 end

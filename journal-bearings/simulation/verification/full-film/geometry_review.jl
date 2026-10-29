@@ -66,7 +66,7 @@ function review_conical(out)
     end
     perturbed = a.A \ b
     paths = [joinpath(@__DIR__,"../../reynolds/src",name)
-             for name in ("conical.jl","cylindrical.jl","full_film.jl","pressure_vtk.jl")]
+             for name in ("conical.jl","cylindrical.jl","full_film.jl","face_fluxes.jl","fitted_full_film.jl","pressure_vtk.jl")]
     append!(paths,[joinpath(@__DIR__,"../../tests/conical_checks.jl"),
                    joinpath(@__DIR__,"../../reynolds/docs/conical-formulation.md")])
     append!(paths,[joinpath(@__DIR__,"../../..",name) for name in

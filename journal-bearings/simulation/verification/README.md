@@ -7,8 +7,13 @@ grid refinement:
   fields and conical geometry checks.
 - [Swift–Stieber](swift-stieber/README.md): independent finite differences,
   end flow and manufactured conical solutions.
-- [JFO](jfo/README.md): a published slider benchmark and conical
-  pressure/liquid-content refinement.
+- [JFO](jfo/README.md): finite-cylinder historical comparisons, independent
+  pressure/content checks, a published slider, conical manufactured refinement
+  and conservative transport around actual fitted inlets.
+
+- [Housing FSI](fsi/README.md): fixed-position one-/two-way JFO and 3D elastic
+  housing/solid-journal pilots, with independent solid verification and
+  separate structural meshes.
 
 Run commands from `journal-bearings/` after the [project setup](../../README.org).
 Each suite lists its inputs, commands and comparison limits. Use fresh output
@@ -19,8 +24,8 @@ directories under `out/verification/`.
 - Full film: `full-film/run.jl DIRECTORY`, then its `analyse.py` and `plot.py`.
 - Swift–Stieber: `swift-stieber/run_cylindrical.jl DIRECTORY` or
   `run_conical.jl DIRECTORY`, then that suite's `analyse.py` and `plot.py`.
-- JFO: the [slider and cone runners](jfo/README.md) save their own verification
-  tables and manifests; the other suites' postprocessors do not consume them.
+- JFO: `jfo/cylindrical/run.jl DIRECTORY`, then its `analyse.py` and `plot.py`.
+  The [slider and cone runners](jfo/README.md) have separate tables and manifests.
 
 Julia study runners accept `--help`, `-v` and `-q`. Where supported, `--full`
 selects the larger study. Python postprocessors accept the same reporting flags.

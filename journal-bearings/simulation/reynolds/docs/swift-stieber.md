@@ -1,10 +1,12 @@
 # Swift–Stieber pressure-only cavitation
 
 `swift_stieber.jl` applies a nonnegative pressure obstacle to the shared rigid,
-steady, isoviscous Reynolds assembly. It supports supplied unported cylindrical
-and conical tensor meshes, including adjusted spacing. Geometry, normal-gap and
+steady, isoviscous Reynolds assembly. It supports supplied cylindrical/conical
+tensor meshes, including adjusted spacing, and fitted land meshes with an
+explicit prescribed rim pressure. Geometry, normal-gap and
 wall-speed approximations are those of the [full-film formulation](conical-formulation.md).
-No second production pressure discretization is introduced.
+This closure uses the full-film face operator for the supplied mesh; it does
+not assemble a separate pressure discretization.
 
 ## Equations and unknowns
 
@@ -26,6 +28,14 @@ implementation reuses `solve_jfo_active_set` with a diagonal reaction block as
 an algebraic kernel. That auxiliary reaction is NOT a transported void field.
 The iteration cap reports failure; no unconverged field is silently returned.
 
+The [fitted operator](fitted-full-film.md) can be nonsymmetric with positive
+off-diagonals. Its complementarity equations are the same, but not the gradient
+conditions of the tensor convex energy. The same algebraic active-set kernel
+uses general sparse solves, followed by pressure/reaction and flux checks.
+No global convergence or uniqueness guarantee covers arbitrary fitted meshes.
+Manufactured fields and a separate projected-SOR algebraic comparison check
+covered configurations independently of a small residual.
+
 ## Supplied-mesh API
 
 From `journal-bearings/`:
@@ -46,12 +56,21 @@ These are explicit numerical-example conditions, not adopted Gangrade inlet
 conditions. Lengths in mesh inputs are mm; computed pressures are Pa, viscosity
 Pa*s, normal gaps metres, face flows m3/s and housing forces N.
 
+For an opening, additionally load `mesh/2d/surface_feed.jl`, construct
+`surface_feed_grid`, and supply `feed_pressure_pa` to `solve_swift_stieber`.
+It acts on rim faces, not on a ring of fixed land cells. The pressure must be
+finite and at least `cavitation_pressure_pa`; no supply pressure is selected
+implicitly. Unported grids reject the feed-pressure keyword.
+
 Keywords:
 
 - `rpm`, `viscosity_pa_s`: prescribed speed and positive dynamic viscosity.
 - `end_pressure_pa=(p_large,p_small)`: pressures at physical axial faces,
   ordered `z=0,z=L`; each must be at least `cavitation_pressure_pa`.
 - `cavitation_pressure_pa=0.`: constant pressure floor in the SAME reference.
+- `feed_pressure_pa=nothing`: required rim pressure on fitted meshes, in that
+  reference. It may equal the pressure floor; this is not a liquid-content or
+  replenishment specification.
 - `eccentricity_angle_rad=0.`: offset orientation relative to the fixed mesh;
   result-mesh pose/gap handling is the same as the full-film API.
 - `pinned_cells=Int[]`: optional cell indices fixed to `p_cav`; at least one
@@ -67,9 +86,12 @@ they do not reconstruct an experimental oil passage.
 ## Results and interpretation
 
 The result contains `grid`, `pressure_pa`, `pressure_above_cavitation_pa`,
-`normal_gap_m`, `reaction_m3_s`, the Boolean `pinned_cells` mask, theta and axial
-face flows, `housing_pressure_force_n` and `diagnostics`. Pressure order is
-`i+n_theta*(j-1)`. The input mesh is not moved or replaced.
+`normal_gap_m`, `reaction_m3_s`, the Boolean `pinned_cells` mask,
+`face_flow_m3_s`, `boundary_outflow_m3_s`, `housing_pressure_force_n` and
+`diagnostics`. Pressure order follows `grid.quads`; for tensors this is
+`i+n_theta*(j-1)`. Tensor results also retain theta/axial flow arrays. Fitted
+results use their supplied owner/neighbour faces, with positive outward flow
+and `large`, `small`, `feed` boundary totals. The input housing is not moved.
 
 Fluxes extrapolate the fully-liquid Couette–Poiseuille law through all cells.
 Positive-pressure residuals and complementarity are checked separately from
@@ -79,7 +101,12 @@ flux reconstruction. Diagnostics report:
 - positive-pressure residual and complementarity;
 - reconstruction error between face balance and `A*P-b`;
 - fully-liquid cavity flux defect and pinned-line exchange;
-- outward axial end flows and their defect-accounting residual.
+- outward axial end flows and their defect-accounting residual;
+- for fitted meshes, outward feed flow, included in global boundary accounting.
+
+The sum of boundary outflows equals the cavity defect plus pinned-cell
+exchange, up to algebraic roundoff. The axial end total alone need not equal
+feed injection in a pressure-only cavity model.
 
 Cavity reaction accounting is NOT JFO mass-conserving transport or a predicted
 liquid inventory. End fluxes are pressure-only model outputs, not experimentally
@@ -99,8 +126,7 @@ signed-full-film cylindrical runner; it does not select this closure.
 ## Checks and limits
 
 ```sh
-julia --project=. --check-bounds=yes simulation/tests/swift_stieber_checks.jl
-julia --project=. --check-bounds=yes expts/gangrade-figure6/reynolds_checks.jl
+julia --project=. simulation/tests/runtests.jl swift_stieber_checks.jl fitted_swift_stieber_checks.jl
 ```
 
 Checks cover supplied/adjusted meshes, pressure references, pinning, scaling,
@@ -110,7 +136,6 @@ Residual thresholds establish algebraic convergence, not continuum accuracy.
 provides independently formulated finite-width references, analytical end-flux
 checks, conical manufactured fields and coordinate-aware refinement runners.
 
-Fitted/ported meshes, thermal effects, elasticity and load equilibrium are not
-implemented here. [JFO](conical-jfo.md) is a separate closure with liquid-content
+Thermal effects, elasticity and load equilibrium are not implemented here. [JFO](conical-jfo.md) is a separate closure with liquid-content
 transport and an explicit supply/inventory requirement. [Gangrade's reported
 inputs](../../../docs/gangrade-reference.md) do not fully define an inlet model.

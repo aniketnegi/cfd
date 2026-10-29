@@ -35,10 +35,11 @@ ISO VG 32 alone does not fix dynamic viscosity, density or operating temperature
 The oil paper states circumferential periodicity and atmospheric axial sides,
 but prints `p_bar=1` at both axial edges with `p_bar=p/p_s`.
 That equation gives 0.5 MPa, not atmosphere. Its rupture conditions specify
-zero pressure and zero circumferential pressure gradient at rupture, plus a
-zero-pressure start line whose alignment for Fig. 6 is unclear. The numerical
-cavitation pressure/reference and actual Fortran boundary implementation are
-not recovered.
+zero pressure and zero circumferential pressure gradient at the unknown rupture
+angle, and zero pressure at the angular origin. The latter is redundant if
+that ray is already in the cavity; its alignment relative to eccentricity for
+Fig. 6 is unclear. The numerical cavitation pressure/reference and actual
+Fortran boundary implementation are not recovered.
 
 The companion [water-CFD paper](https://doi.org/10.5958/2321-581X.2018.00016.8)
 explicitly imposes **0.5 MPa gauge at one side of the clearance** and atmosphere
@@ -71,16 +72,22 @@ for pressure-only calculations and the [verification tools](../simulation/verifi
 for independently checked cylindrical/conical test problems. The small
 `reynolds_cavitation.jl` count adapter delegates to that same shared solver;
 `reynolds_checks.jl` exercises it without loading a Gangrade comparison run.
+The verification directory's `unported_grid.jl` compares public12x4 meshes
+(48elements/60periodic Q4 nodes) with refined Q4 and production FV solutions.
+Its Q4 assembly is a stated reconstruction, not the original Fortran method.
 
 No maintained runner reconstructs the experimental IP1 passage or resolves
 the conflicting axial/start-line descriptions. End reservoirs, a pinned
 zero-pressure line and a fitted circular feed are distinct boundary models.
 The benchmark's maximum-clearance groove is not an implicit Gangrade input.
 A diameter supplied by the caller is a study parameter, not a recovered
-published dimension.
+published dimension. The [feed-hole sizing note](feed-hole-sizing.md) separates
+manufacturer/literature precedents from the standard-informed 7 mm cylinder/cone
+example. It uses wrapped-cylinder hole dimensions by analogy, not a universal
+conical sizing fraction.
 
 A future parameter study must state its selected pressure reference, feed
 location and boundary interpretation. An exploratory fitted parameter is not
-independent validation. The [solver support table](solver-support.md) still
-marks fitted fluid simulation unsupported; accepted mesh geometry alone does
-not verify a nonorthogonal flow operator.
+independent validation. The [solver support table](solver-support.md) covers
+signed fitted full film and pressure-only cavitation. A comparison still needs
+an explicit supply location, mouth pressure and axial/start-line interpretation.

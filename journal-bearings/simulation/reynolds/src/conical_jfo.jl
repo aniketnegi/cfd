@@ -2,22 +2,36 @@
 # No elasticity, thermal solve, passage resistance, or load equilibrium.
 include(joinpath(@__DIR__,"conical.jl"))
 include(joinpath(@__DIR__,"jfo_active_set.jl"))
+include(joinpath(@__DIR__,"fitted_jfo.jl"))
 
-"""Reuse the checked cone pressure mobility and add conservative upwind void
-transport on its periodic theta faces. P=p-p_cav; v=1-fill; A*P+B*v=b.
-No axial Couette transport, hence no independent axial advective fill datum.
-This low-level operator alone does not define a liquid inventory or supply.
+"""Reuse the shared pressure mobility and add conservative upwind void
+transport. P=p-p_cav; v=1-fill; A*P+B*v=b. Tensor theta faces are periodic;
+fitted faces use their signed normal Couette flow, including the inlet rim.
+The low-level operator alone does not define a liquid inventory or supply.
 """
-function assemble_conical_jfo(p::BearingParameters, nt::Int, nz::Int;
+function assemble_conical_jfo(p::BearingParameters, nt::Int, nz::Int;kwargs...)
+    return assemble_conical_jfo(housing_grid(p,nt,nz);kwargs...)
+end
+
+function assemble_conical_jfo(grid;
                               rpm::Real, viscosity_pa_s::Real,
                               end_pressure_pa::Tuple{Real,Real},
                               cavitation_pressure_pa::Real,
-                              eccentricity_angle_rad::Real=0.0)
+                              eccentricity_angle_rad::Real=0.0,
+                              feed_pressure_pa::Union{Nothing,Real}=nothing,
+                              gap_correction_m=nothing)
+    if hasproperty(grid,:feed_edges)
+        return assemble_fitted_jfo(grid;rpm,viscosity_pa_s,end_pressure_pa,
+            cavitation_pressure_pa,eccentricity_angle_rad,feed_pressure_pa,gap_correction_m)
+    end
+    isnothing(feed_pressure_pa) || throw(ArgumentError("tensor assembly has no fitted rim; use an explicit reservoir mask in the solver"))
     pc = Float64(cavitation_pressure_pa)
     isfinite(pc) || throw(ArgumentError("cavitation pressure must be finite"))
     ends = Float64.(end_pressure_pa) .- pc
     minimum(ends) >= 0 || throw(ArgumentError("end pressure below cavitation pressure"))
-    a = assemble_conical_full_film(p,nt,nz;rpm,viscosity_pa_s,end_pressure_pa=ends,eccentricity_angle_rad)
+    a = assemble_full_film(grid;rpm,viscosity_pa_s,end_pressure_pa=ends,eccentricity_angle_rad,gap_correction_m)
+    p = a.grid.parameters
+    nt,nz = size(a.gt)
     rows,cols,values = Int[],Int[],Float64[]
     for j in 1:nz,i in 1:nt
         k,l = i+nt*(j-1),(i == nt ? 1 : i+1)+nt*(j-1)
@@ -35,10 +49,12 @@ function assemble_conical_jfo(p::BearingParameters, nt::Int, nz::Int;
 end
 
 """Reconstruct oriented liquid-equivalent face flows (m³/s), independently of
-matrix multiplication. Circumferential flow includes the nt→1 periodic face;
-axial flow is positive towards z=L. Balance is outward flow from each cell.
+the assembled cell matrices. Tensor circumferential flow includes the nt→1
+periodic face; axial flow is positive towards z=L. Fitted output is per-face,
+with tagged boundary sums. Balance is outward flow from each cell.
 """
 function conical_jfo_fluxes(a,pressure,fill)
+    hasproperty(a,:gt) || return jfo_face_fluxes(a,pressure,fill)
     nt,nz = size(a.gt)
     length(pressure) == length(fill) == nt*nz || throw(ArgumentError("field size mismatch"))
     P,F = reshape(pressure,nt,nz),reshape(fill,nt,nz)
@@ -59,22 +75,35 @@ function conical_jfo_fluxes(a,pressure,fill)
 end
 
 """
-    solve_conical_jfo(p,nt,nz; rpm,viscosity_pa_s,end_pressure_pa,
+    solve_conical_jfo(grid; rpm,viscosity_pa_s,end_pressure_pa,
                      cavitation_pressure_pa,feed_cells=nothing,feed_pressure_pa=nothing)
+    solve_conical_jfo(p,nt,nz; kwargs...)
 
-Requires a pressure supply above p_cav at an end or an explicitly supplied
-cell mask. A feed cell is a fully liquid, bidirectional prescribed-pressure
-reservoir, NOT a resolved hole, check valve or prescribed flow. Its required
-source/sink is recovered from the face balance. No mask is selected implicitly.
+Consumes a supplied tensor or fitted land mesh; the count form constructs
+housing_grid. A fitted rim requires feed_pressure_pa > p_cav and uses actual
+boundary faces with incoming fill=1; feed_cells is rejected on fitted meshes.
+An unported mesh requires supply above p_cav at an end or an explicit cell mask.
+A feed cell is a fully liquid bidirectional reservoir, NOT a resolved hole.
+Its source/sink is recovered from the face balance. No mask is selected implicitly.
+Neither feed model is a check valve, passage resistance or prescribed flow.
 All pressures use the caller's common reference. No underfilled periodic
 inventory is silently selected when all reservoirs equal p_cav.
 """
-function solve_conical_jfo(p::BearingParameters,nt::Int,nz::Int;
+function solve_conical_jfo(p::BearingParameters,nt::Int,nz::Int;kwargs...)
+    return solve_conical_jfo(housing_grid(p,nt,nz);kwargs...)
+end
+
+function solve_conical_jfo(grid;
                            feed_cells::Union{Nothing,AbstractVector{Bool}}=nothing,
                            feed_pressure_pa::Union{Nothing,Real}=nothing,
                            max_iterations::Int=2000,tolerance::Real=1e-10,kwargs...)
     isfinite(tolerance) && 0 < tolerance < 1 || throw(ArgumentError("invalid tolerance"))
-    a = assemble_conical_jfo(p,nt,nz;kwargs...)
+    if hasproperty(grid,:feed_edges)
+        isnothing(feed_cells) || throw(ArgumentError("fitted land uses rim faces, not feed_cells"))
+        return solve_fitted_jfo(grid;feed_pressure_pa,max_iterations,tolerance,kwargs...)
+    end
+    a = assemble_conical_jfo(grid;kwargs...)
+    nt,nz = size(a.gt)
     n = nt*nz
     isnothing(feed_cells) == isnothing(feed_pressure_pa) ||
         throw(ArgumentError("provide both feed_cells and feed_pressure_pa, or neither"))
@@ -88,7 +117,7 @@ function solve_conical_jfo(p::BearingParameters,nt::Int,nz::Int;
         isfinite(fp) && fp > 0 || throw(ArgumentError("feed must be above cavitation pressure and fully liquid"))
     end
     any(a.end_pressure_pa .> 0) || any(fixed) || throw(ArgumentError(
-        "no pressure supply above p_cav: periodic liquid inventory is unspecified; ambient ends alone are not replenishment"))
+        "no pressure supply above p_cav: periodic liquid inventory is unspecified; ends at p_cav alone do not specify replenishment"))
     free = findall(.!fixed)
     P,F = zeros(n),ones(n)
     P[fixed] .= fp
@@ -130,14 +159,19 @@ end
 
 function write_conical_jfo_vtk(path::AbstractString,result)
     ispath(path) && error("refusing to overwrite $path")
-    write_vtk(path,result.grid;feed_cells=result.feed_cells)
+    fitted=hasproperty(result.grid,:feed_edges)
+    fitted ? write_vtk(path,result.grid) : write_vtk(path,result.grid;feed_cells=result.feed_cells)
+    fields=[("pressure_pa",result.pressure_pa),
+        ("pressure_above_cavitation_pa",result.pressure_above_cavitation_pa),
+        ("fill_fraction",result.fill_fraction),("normal_gap_m",result.normal_gap_m)]
+    fitted || push!(fields,("feed_source_m3_s",result.feed_source_m3_s))
+    rim=fitted ? length(result.grid.feed_edges) : 0
     open(path,"a") do io
-        for (name,data) in (("pressure_pa",result.pressure_pa),
-                            ("pressure_above_cavitation_pa",result.pressure_above_cavitation_pa),
-                            ("fill_fraction",result.fill_fraction),
-                            ("normal_gap_m",result.normal_gap_m),
-                            ("feed_source_m3_s",result.feed_source_m3_s))
+        for (name,data) in fields
             println(io,"SCALARS $name double 1\nLOOKUP_TABLE default")
+            for _ in 1:rim
+                println(io,NaN)
+            end
             foreach(x->println(io,x),data)
         end
     end

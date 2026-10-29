@@ -1,4 +1,4 @@
-# Pressure-only obstacle on the shared unported tensor pressure assembly.
+# Pressure-only obstacle on the shared tensor/fitted pressure assembly.
 # Load bearing.jl and mesh/2d/grid.jl first; see ../docs/swift-stieber.md.
 using LinearAlgebra, SparseArrays
 isdefined(@__MODULE__, :assemble_full_film) || include(joinpath(@__DIR__,"full_film.jl"))
@@ -22,10 +22,12 @@ end
 """
     solve_swift_stieber(grid; rpm, viscosity_pa_s, end_pressure_pa=(0.,0.),
                        cavitation_pressure_pa=0., eccentricity_angle_rad=0.,
-                       pinned_cells=Int[], max_iterations=2000)
+                       pinned_cells=Int[], feed_pressure_pa=nothing,
+                       max_iterations=2000)
 
-Pressure-only Reynolds obstacle on a supplied unported tensor mesh. Pressures
-use one common reference; end pressures cannot be below cavitation. Optional
+Pressure-only Reynolds obstacle on a supplied tensor or fitted land mesh. A
+fitted rim requires an explicit pressure at least equal to cavitation pressure.
+Pressures use one reference; end pressures cannot be below cavitation. Optional
 cell indices prescribe p=p_cav, not a finite inlet geometry or liquid inventory.
 The result reports fully-liquid extrapolated fluxes and their cavity defects,
 NOT a transported cavity fill or validated oil consumption. No file IO occurs.
@@ -33,21 +35,28 @@ NOT a transported cavity fill or validated oil consumption. No file IO occurs.
 function solve_swift_stieber(grid;rpm::Real,viscosity_pa_s::Real,
         end_pressure_pa::Tuple{Real,Real}=(0.,0.),cavitation_pressure_pa::Real=0.,
         eccentricity_angle_rad::Real=0.,pinned_cells::AbstractVector{Int}=Int[],
-        max_iterations::Int=2000)
+        feed_pressure_pa::Union{Nothing,Real}=nothing,max_iterations::Int=2000)
     pc=Float64(cavitation_pressure_pa)
     isfinite(pc) || throw(ArgumentError("cavitation pressure must be finite"))
     ends=Float64.(end_pressure_pa).-pc
     all(isfinite,ends) && minimum(ends)>=0 ||
         throw(ArgumentError("end pressures must be finite and not below cavitation"))
-    a=assemble_full_film(grid;rpm,viscosity_pa_s,end_pressure_pa=ends,eccentricity_angle_rad)
+    feed=isnothing(feed_pressure_pa) ? nothing : Float64(feed_pressure_pa)-pc
+    isnothing(feed) || (isfinite(feed) && feed>=0) ||
+        throw(ArgumentError("feed pressure must be finite and not below cavitation"))
+    a=assemble_full_film(grid;rpm,viscosity_pa_s,end_pressure_pa=ends,eccentricity_angle_rad,
+        feed_pressure_pa=feed)
+    tensor=hasproperty(a,:gt)
     n=length(a.b);p=grid.parameters
     all(i->1<=i<=n,pinned_cells) || throw(ArgumentError("invalid pinned cell index"))
     fixed=falses(n);fixed[pinned_cells].=true
     free=findall(.!fixed)
     isempty(free) && throw(ArgumentError("pinned cells leave no free pressure unknowns"))
-    pressure_scale=max(maximum(ends),12Float64(viscosity_pa_s)*abs(Float64(rpm)*2pi/60)*
+    reservoir_pressure=tensor ? maximum(ends) : max(maximum(ends),feed)
+    pressure_scale=max(reservoir_pressure,12Float64(viscosity_pa_s)*abs(Float64(rpm)*2pi/60)*
         (p.journal_midpoint_radius*1e-3)*(2pi*p.housing_midpoint_radius*1e-3)/minimum(a.normal_gap_m)^2,1.)
-    flow_scale=max(maximum(abs,a.adv),maximum(a.gz)*maximum(ends),1e-30)
+    flow_scale=tensor ? max(maximum(abs,a.adv),maximum(a.gz)*maximum(ends),1e-30) :
+        max(maximum(abs,a.faces.advective),maximum(abs,a.faces.constant),1e-30)
     state=pressure_obstacle(a.A[free,free],a.b[free],pressure_scale,flow_scale;max_iterations)
     P=zeros(n);P[free]=state.pressure
     reaction=a.A*P-a.b
@@ -56,10 +65,13 @@ function solve_swift_stieber(grid;rpm::Real,viscosity_pa_s::Real,
     residual=any(positive) ? maximum(abs,reaction[positive])/flow_scale : 0.
     complementarity=maximum(abs,(P[free]/pressure_scale).*(reaction[free]/flow_scale))
     reconstruction=maximum(abs,flux.balance-reaction)/flow_scale
-    outward=(-sum(flux.qz[:,1]),sum(flux.qz[:,end]))
+    outward=tensor ? (-sum(flux.qz[:,1]),sum(flux.qz[:,end])) :
+        (flux.boundary_outflow.large,flux.boundary_outflow.small)
+    feed_outward=tensor ? 0. : flux.boundary_outflow.feed
+    boundary_net=tensor ? sum(outward) : sum(values(flux.boundary_outflow))
     cavity=sum(reaction[.!positive .& .!fixed]);exchange=sum(reaction[fixed])
-    global_scale=max(sum(abs,outward)+abs(cavity)+abs(exchange),flow_scale)
-    accounting=abs(sum(outward)-cavity-exchange)/global_scale
+    global_scale=max(sum(abs,outward)+abs(feed_outward)+abs(cavity)+abs(exchange),flow_scale)
+    accounting=abs(boundary_net-cavity-exchange)/global_scale
     residual<1e-10 && reconstruction<1e-10 && accounting<1e-10 ||
         error("Swift-Stieber failed pressure/flux-defect diagnostics")
     pressure_pa=P .+ pc
@@ -69,8 +81,12 @@ function solve_swift_stieber(grid;rpm::Real,viscosity_pa_s::Real,
         defect_accounting_relative=accounting,cavity_full_film_flux_defect_m3_s=cavity,
         pinned_line_exchange_m3_s=exchange,extrapolated_outward_end_flow_m3_s=outward,
         extrapolated_end_outflow_m3_s=sum(outward))
+    tensor_flows=tensor ? (;circumferential_face_flow_m3_s=flux.qt,axial_face_flow_m3_s=flux.qz) : (;)
+    if !tensor
+        diagnostics=(;diagnostics...,extrapolated_outward_feed_flow_m3_s=feed_outward)
+    end
     return (;grid=a.grid,pressure_pa,pressure_above_cavitation_pa=P,
-        normal_gap_m=a.normal_gap_m,reaction_m3_s=reaction,pinned_cells=fixed,
-        circumferential_face_flow_m3_s=flux.qt,axial_face_flow_m3_s=flux.qz,
+        normal_gap_m=a.normal_gap_m,reaction_m3_s=reaction,pinned_cells=fixed,tensor_flows...,
+        face_flow_m3_s=flux.face_flow,boundary_outflow_m3_s=flux.boundary_outflow,
         housing_pressure_force_n=housing_pressure_force(a.grid,pressure_pa),diagnostics)
 end

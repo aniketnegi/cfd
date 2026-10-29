@@ -30,6 +30,8 @@ function run_conical_verification()
                          joinpath(@__DIR__,"../../reynolds/src/conical.jl"), @__FILE__,
                          joinpath(@__DIR__,"../../reynolds/src/cylindrical.jl"),
                          joinpath(@__DIR__,"../../reynolds/src/full_film.jl"),
+                         joinpath(@__DIR__,"../../reynolds/src/face_fluxes.jl"),
+                         joinpath(@__DIR__,"../../reynolds/src/fitted_full_film.jl"),
                          joinpath(@__DIR__,"../../reynolds/src/pressure_vtk.jl"),
                          joinpath(@__DIR__,"../../../bearing.jl"),
                          joinpath(@__DIR__,"../../../mesh/2d/grid.jl"),

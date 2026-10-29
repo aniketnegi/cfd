@@ -22,6 +22,8 @@ SOLVER = Path("simulation/reynolds/src/full_film.jl")
 TESTS = Path("simulation/tests/conical_checks.jl")
 SOURCES = (
     SOLVER, TESTS,
+    Path("simulation/reynolds/src/face_fluxes.jl"),
+    Path("simulation/reynolds/src/fitted_full_film.jl"),
     Path("simulation/reynolds/src/conical.jl"),
     Path("simulation/reynolds/src/cylindrical.jl"),
     Path("simulation/reynolds/src/pressure_vtk.jl"),

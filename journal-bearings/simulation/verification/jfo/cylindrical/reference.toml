@@ -1,0 +1,83 @@
+# Published comparison values, not solver regressions or continuum error bounds.
+[source]
+authors = ["Bengt Jakobsson", "Leif Floberg"]
+title = "The Finite Journal Bearing, Considering Vaporization"
+year = 1957
+report = "Transactions of Chalmers University of Technology, No.190"
+compilation_title = "On hydrodynamic lubrication with special reference to cavitation in bearings"
+compilation_author = "Leif Floberg"
+compilation_year = 1961
+url = "https://research.chalmers.se/en/publication/177651"
+pdf_url = "https://research.chalmers.se/publication/177651/file/177651_Fulltext.pdf"
+pdf_sha256 = "bcb075c73fa45a9b2163eafe6c977169d5800f21046f7ab5e29088efa3e76ebc"
+model_section = "5.2, printed pp54-66; PDF pp175-187"
+definition_pages = "Printed pp8-10,14-15,57,59-60,104"
+table_pages = [106,107,108,109]
+table_pdf_pages = [227,228,229,230]
+transcription = "reference.csv: P0,beta,Q0 visually checked against the four rendered primary pages; decimal commas converted to points"
+data_status = "Literal historical calculated values; not raw experimental arrays or results from our solver"
+precision_note = "Printed digits are preserved in CSV text. Rounding alone is not a bound on the original spatial/iteration error. No comparison acceptance tolerance is assigned."
+
+[model]
+geometry = "Rigid, aligned, full-circle finite cylindrical journal bearing"
+lubricant = "Incompressible Newtonian, constant viscosity"
+gap = "H(phi)=h/c=1-epsilon*cos(phi)"
+metric_and_wall_speed = "Single nominal journal radius R; U=omega*R"
+angular_coordinate = "Minimum clearance at phi=0; maximum at phi=-pi,+pi; positive phi is wall-motion direction"
+axial_coordinate = "z measured from midplane; z/R lies in [-L_D,+L_D]"
+circumferential_boundary = "Periodic pressure and transported liquid; no pinned angular line"
+axial_boundary = "Both sides immersed in surrounding oil at p_ambient; liquid supply through those sides"
+cavitation = "Constant p_cav below p_ambient, mass-conserving rupture/reformation with striated transport in cavity"
+inlet = "No hole or groove; no imposed Gangrade supply pressure or project drilling diameter"
+reference_pressure = "All source pressure values relative to surrounding oil; p_ambient=0 in that gauge"
+implementation_note = "Production circle-intersection gap and separate journal/housing radii are a distinct model; a classical benchmark fixture must remain explicitly labelled."
+
+[normalization]
+R = "Nominal journal radius"
+c = "Radial clearance, called Delta r in source"
+L = "Full axial bearing width, called b in source"
+nu = "L/D=L/(2R)"
+psi = "c/R"
+pressure_scale_pa = "mu*omega*R^2/c^2"
+p0 = "(p-p_ambient)/pressure_scale_pa"
+pv0 = "(p_cav-p_ambient)/pressure_scale_pa"
+P0 = "W*c^2/(mu*omega*R^3*L), W is total resultant bearing load"
+beta_deg = "Angle in degrees between load line and line of centres"
+Q0 = "Q_out/(omega*R^2*c)"
+Q_out = "Gross outward oil exchange through BOTH axial ends; source section5.23 integrates the outward-flow portion"
+flow_accounting = "Submerged end reservoirs both supply and receive oil: gross_outflow=gross_inflow>0, signed net end outflow=0. Preserve both signs in raw face flows."
+
+[coverage]
+L_D = [1.0,0.5,0.25]
+epsilon = [0.2,0.4,0.6,0.8]
+pv0 = [-1.0,-0.1]
+rows = 24
+excluded = "Zero eccentricity and singular epsilon=1 columns; neighbouring noncavitating/180degree/grooved tables are not included"
+regimes = "Includes cavitating states and full-film limiting states; do not assume all24rows cavitate"
+
+[experimental_caution]
+section = "5.27, printed pp64-66; pressure comparisons Figs68.1/69.1 and70.1/71.1"
+first_case = "L/D=4/3,c/R=.00291,mu=.0127Pa*s,omega=48.1rad/s,target epsilon=.6,pv0=-1,experimental total load2250N"
+eccentricity = "Source says load implies epsilon approximately.61; theoretical curves use.6. Do not call this an exact prescribed-eccentricity experiment."
+pressure_sampling = "Fig69.1 traces at z/R=(3/5)*(L/D) and (1/5)*(L/D), not exactly the midplane; vacuum-pump annotation is present"
+second_case = "L/D=1,c/R=.00364,mu=.0153Pa*s,omega=48.6rad/s,pv0=-.1,experimental total load620N; theory at epsilon=.6"
+digitization = "No pressure or front curves have been digitized into this fixture."
+
+[secondary_xu2021]
+authors = ["Wanjun Xu","Shanhui Zhao","Yaoyao Xu","Kang Li"]
+title = "Reynolds Model versus JFO Theory in Steadily Loaded Journal Bearings"
+doi = "10.3390/lubricants9110111"
+url = "https://www.mdpi.com/2075-4442/9/11/111"
+use = "Finite-cylinder pressure, cavitation contours, Sommerfeld number, attitude and flow trends"
+model_difference = "Uses compressible Elrod pressure-density relation p=pc+beta*ln(theta), unlike our incompressible liquid-content model. Fig2 states beta=1e10Pa."
+data_status = "Article says data are contained within the article; no separate machine-readable field dataset recovered"
+cautions = "Fig2 reuses older experimental data, not an independent new experiment. Its central-profile label requires mapping to original axial positions. Section3 parametric cases impose ambient pressure on allfour unwrapped edges including the maximum-gap supply line, not the primary reference's ungrooved periodic problem; do not assume the separate Fig2 uses that later boundary specification. Lambda uses ambient pressure as a nonzero scale while boundary pressure is described as zero gauge; keep references distinct."
+
+[secondary_dowson1985]
+authors = ["D. Dowson","A. S. Miranda","C. M. Taylor"]
+title = "The prediction of liquid film journal bearing performance with a consideration of lubricant film reformation, Part2: experimental results"
+doi = "10.1243/PIME_PROC_1985_199_100_02"
+repository_pdf = "https://repositorium.uminho.pt/bitstreams/3b08e7db-15ea-4ccf-bf63-81b501c1108b/download"
+pdf_sha256 = "864c09bc1590beb0ca4417ab9997d296c9445fdd999a4fc4159a758b861bffe8"
+use = "Measured side flow and rupture/reformation boundaries in finite cylinders; glass bushes with a hole or finite axial grooves"
+cautions = "Different geometry/supply from ungrooved first benchmark; recover each bush and use measured effective-viscosity convention. Graph digitization is required; no raw arrays recovered."

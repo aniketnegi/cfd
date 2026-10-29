@@ -38,8 +38,8 @@ function verify_conical_jfo(out)
     end
     root = normpath(joinpath(@__DIR__,"../../../.."))
     paths = ["simulation/reynolds/src/"*f for f in
-        ("conical_jfo.jl","jfo_active_set.jl","conical.jl","cylindrical.jl",
-         "full_film.jl","pressure_vtk.jl")]
+        ("conical_jfo.jl","fitted_jfo.jl","jfo_active_set.jl","conical.jl","cylindrical.jl",
+         "full_film.jl","face_fluxes.jl","fitted_full_film.jl","pressure_vtk.jl")]
     append!(paths,["simulation/verification/jfo/conical/"*f for f in
         ("cases.jl","conical_jfo_mms.jl","conical_jfo_verification.jl")])
     append!(paths,["simulation/tests/conical_jfo_checks.jl",

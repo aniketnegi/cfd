@@ -20,10 +20,16 @@ RUNNERS = [
     'full-film/conical_verification.jl',
     'swift-stieber/run_cylindrical.jl', 'swift-stieber/run_conical.jl',
     'swift-stieber/compare_fd.jl', 'swift-stieber/fd_checks.jl',
+    'swift-stieber/fitted_verification.jl',
+    'swift-stieber/q4_checks.jl', 'swift-stieber/unported_grid.jl',
     'swift-stieber/fv_flux_checks.jl', 'swift-stieber/long_bearing.jl',
     'swift-stieber/conical_mms.jl', 'swift-stieber/conical_checks.jl',
     'jfo/slider/jfo_slider_verification.jl',
     'jfo/conical/conical_jfo_verification.jl',
+    'jfo/conical/transport_verification.jl', 'jfo/conical/transport_checks.jl',
+    'fsi/run.jl', 'fsi/both.jl',
+    'jfo/cylindrical/run.jl', 'jfo/cylindrical/checks.jl',
+    'jfo/cylindrical/xi2024/run.jl', 'jfo/cylindrical/xi2024/checks.jl',
 ]
 ENV = dict(os.environ, JULIA_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1',
            PYTHONDONTWRITEBYTECODE='1')
@@ -153,13 +159,13 @@ end)
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             (run / 'inputs.toml').write_text('[source_sha256]\n')
-            for suite in ['full-film', 'swift-stieber']:
+            for suite in ['full-film', 'swift-stieber', 'jfo/cylindrical', 'jfo/cylindrical/xi2024', 'jfo/conical', 'fsi']:
                 path = VERIFY / suite / 'analyse.py'
                 # An empty/unsupported run must fail even with assertions disabled.
                 if suite == 'full-film':
                     (run / 'results.tsv').write_text('model\tL_D\tepsilon\n')
                 else:
-                    (run / 'results.tsv').unlink()
+                    (run / 'results.tsv').unlink(missing_ok=True)
                 for optimize in [[], ['-O']]:
                     result = self.command([sys.executable, *optimize, str(path), '-q', directory], ROOT)
                     self.assertEqual(result.returncode, 1, result.stderr)
@@ -176,7 +182,7 @@ end)
 
     def test_python_help_errors_and_plot_selection(self):
         with tempfile.TemporaryDirectory() as directory:
-            for suite in ['full-film', 'swift-stieber']:
+            for suite in ['full-film', 'swift-stieber', 'jfo/cylindrical', 'jfo/cylindrical/xi2024', 'jfo/conical', 'fsi']:
                 for name in ['analyse.py', 'plot.py']:
                     command = [sys.executable, str(VERIFY / suite / name)]
                     help_run = self.command(command + ['--help'], ROOT)

@@ -1,7 +1,11 @@
 # Run each suite in a fresh process: includes define shared types and globals.
 const SUITES = [
-    "full_film_checks.jl", "swift_stieber_checks.jl", "checks.jl",
+    "full_film_checks.jl", "fitted_full_film_checks.jl", "swift_stieber_checks.jl",
+    "fitted_swift_stieber_checks.jl", "pressure_sampling_checks.jl", "checks.jl",
     "conical_checks.jl", "jfo_slider_checks.jl", "conical_jfo_checks.jl",
+    "cylindrical_jfo_checks.jl", "xi2024_jfo_checks.jl", "fitted_jfo_checks.jl",
+    "elasticity_checks.jl", "fsi_checks.jl",
+    "journal_checks.jl", "both_fsi_checks.jl",
     "conical_equilibrium_checks.jl", "run_checks.jl",
 ]
 

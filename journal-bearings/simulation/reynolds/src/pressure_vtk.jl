@@ -5,6 +5,9 @@ function write_pressure_vtk(path::AbstractString, result)
     write_vtk(path, result.grid)
     open(path, "a") do io
         println(io, "SCALARS pressure_gauge_pa double 1\nLOOKUP_TABLE default")
+        for _ in get(result.grid,:feed_edges,NTuple{2,Int}[])
+            println(io, NaN)
+        end
         for value in result.pressure_pa
             println(io, value)
         end
@@ -16,6 +19,9 @@ function write_conical_pressure_vtk(path::AbstractString, result)
     write_pressure_vtk(path, result)
     open(path, "a") do io
         println(io, "SCALARS normal_gap_m double 1\nLOOKUP_TABLE default")
+        for _ in get(result.grid,:feed_edges,NTuple{2,Int}[])
+            println(io, NaN)
+        end
         for gap in result.normal_gap_m
             println(io, gap)
         end

@@ -73,6 +73,7 @@ function surface_feed_grid(
         quality=surface.quality,
         acceptance=surface.acceptance,
         placement=surface.placement,
+        parameters=p,
         surface,
         layout="fitted-land-direct-v1",
     )

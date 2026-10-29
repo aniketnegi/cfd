@@ -3,18 +3,21 @@
 | Entry point                                     | Supported domain                                                                        | Model                                |
 |-------------------------------------------------|-----------------------------------------------------------------------------------------|--------------------------------------|
 | `simulation/reynolds/run.jl`                    | Named unported cylinders                                                                | Signed full film                     |
-| `solve_full_film(grid; ...)` | Supplied unported cylindrical/conical tensor grid, uniform or adjusted | Signed full film |
+| `solve_full_film(grid; ...)` | Supplied cylindrical/conical unported tensor or fitted land grid; fitted rim pressure explicit | Signed full film |
 | `solve_cylindrical_full_film`                   | Uniform periodic cylindrical grid                                                       | Signed full film                     |
 | `solve_conical_full_film`                       | Uniform periodic cylindrical/conical grid                                               | Signed full film                     |
-| `solve_conical_jfo`                             | Uniform periodic cylindrical/conical grid; explicit reservoir cells or pressurized ends | Pressure and liquid content          |
+| `solve_conical_jfo(grid; ...)` | Supplied cylindrical/conical tensor or fitted land grid; tensor counts/masks or ends, fitted rim pressure explicit | Pressure and liquid content |
+| `prepare_housing_fsi` / `solve_one_way_fsi` / `solve_two_way_fsi` | Supplied cylindrical/conical tensor or fitted land; fixed nominal journal position, radial housing wall and fixed outer support | Steady JFO and 3D linear-elastic housing; optional independently meshed solid journal via `add_elastic_journal` |
 | `equilibrate_floating_bush`                     | Uniform conical grid with a cell-mask feed                                              | Rigid pressure-load balance          |
-| `solve_swift_stieber(grid; ...)` | Supplied unported cylindrical/conical tensor grid, uniform or adjusted; optional pinned pressure cells | Pressure-only Swift–Stieber obstacle |
+| `solve_swift_stieber(grid; ...)` | Supplied cylindrical/conical tensor or fitted land grid; fitted rim pressure explicit; optional floor-pressure cells | Pressure-only Swift–Stieber obstacle |
 
-`solve_full_film` and `solve_swift_stieber` consume the parameters and tensor coordinates retained by
-`housing_grid`; it uses the supplied spacing and connectivity. The count-based
-full-film entry points construct uniform grids and delegate to this assembly.
-JFO and equilibrium interfaces remain uniform-grid/count-based. No maintained
-solver consumes fitted meshes. Fitted cell counts are not `n_theta*n_axial`.
+Full film, Swift–Stieber and JFO consume the parameters and tensor coordinates
+retained by `housing_grid`. They also consume supplied `surface_feed_grid`
+connectivity, with explicit `feed_pressure_pa` on rim faces.
+Count-based full-film entry points construct uniform grids and delegate to the
+same assembly. JFO accepts supplied uniform/adjusted tensors and fitted land connectivity;
+equilibrium remains uniform-grid/count-based. Fitted
+cell counts are not `n_theta*n_axial`; see [fitted full film](../simulation/reynolds/docs/fitted-full-film.md).
 
 The mesh CLI supports standalone fitted VTK exports, but rejects named fitted
 cases. `experiment.jl` accepts `controlled-fitted-land-v1` manifests with a
@@ -23,6 +26,12 @@ fixed geometry/count contract; it does not load the public mesher's
 nonzero-angle cases.
 
 ## Fitted simulation limitations
+
+Maintained fitted support includes signed full film, pressure-only
+Swift–Stieber and JFO pressure/content transport with an explicit above-cavity
+rim pressure. Fitted load balance and named cases remain unsupported.
+The corrected pressure matrix is not guaranteed symmetric or monotone; fitted
+complementarity is not a tensor-style convex minimization.
 
 `expts/conical-fitted-load/solve.jl` is not usable with the public mesher:
 
@@ -66,8 +75,12 @@ convergence or uniqueness guarantee covers arbitrary inputs.
 
 Signed negative pressures are numerical diagnostics, not physical cavitation.
 JFO needs an explicit supply/inventory specification. Load balance alone is not
-mesh convergence or dynamic stability. Thermal effects and elasticity are not
-implemented in these solvers.
+mesh convergence or dynamic stability. The standalone fluid solvers have no
+structural equations; [housing FSI](../simulation/fsi/docs/steady.md) supplies a
+separate linear-elastic model and relative two-body normal-gap feedback.
+The supplied journal model is an end-clamped solid cylinder/frustum. It does
+not establish coupled spatial convergence. Thermal effects remain
+unsupported.
 
 See the [solver documentation](../simulation/reynolds/README.md) for checks.
 Numerical verification is distinct from physical validation against matched

@@ -2,7 +2,9 @@
 
 `full_film.jl`, exposed through `conical.jl`, implements **rigid, steady, incompressible, Newtonian,
 isoviscous, signed full-film Reynolds flow**. It does not implement cavitation,
-a localized feed, elastic deformation or load equilibrium. Negative pressures
+elastic deformation or load equilibrium. [Fitted full film](fitted-full-film.md)
+adds prescribed pressure on a localized opening rim; the tensor discretization
+below covers an unported surface. Negative pressures
 are retained only for numerical verification. These results must not be used
 as physical load capacity, oil consumption or a Gangrade reproduction.
 
@@ -114,8 +116,8 @@ are derived here; they are not independent published conical validation data.
 
 ## Discretization and boundary conditions
 
-`assemble_full_film` uses the supplied periodic theta–z tensor mesh with
-cell-centred pressure. Cylinder and cone entry points share this assembly.
+The tensor path of `assemble_full_film` uses the supplied periodic theta–z
+mesh with cell-centred pressure. Cylinder and cone entry points share this assembly.
 Uniform formulas below generalize to adjusted spacing by using each face's
 width and the actual distance between adjacent cell centres. At an axial
 boundary, the distance is from the boundary to the first/last centre.
@@ -162,7 +164,7 @@ n = cos(alpha)*(cos(theta),sin(theta),0) + sin(alpha)*(0,0,1).
 ```
 
 We report `F_housing = integral(p*n*dA)` over the conical wetted surface.
-For piecewise constant cell pressure, the oriented area is integrated exactly:
+For piecewise constant pressure on tensor cells, the oriented area is integrated exactly:
 
 ```text
 Ax = r(z_mid) dz [sin(theta_hi)-sin(theta_lo)]
@@ -174,8 +176,9 @@ This is **force on the housing**, not force on the journal. End faces and
 viscous shear are excluded. A journal force calculation needs its own surface
 projection and sign convention; do not silently reuse the housing vector as
 an exact journal force or claim equilibrium with the paper's applied loads.
-A uniform pressure gives zero transverse force and
-`Fz = p*pi*(r_large^2-r_small^2)`. Tests check this and independent transverse
+On an unported surface, uniform pressure gives zero transverse force and
+`Fz = p*pi*(r_large^2-r_small^2)`. Fitted cells instead use curved-surface
+quadrature over the land, excluding the opening. Tests check this and independent transverse
 integrals for sinusoidal pressures. A constant gauge-pressure offset changes
 this open-surface axial force; complete assembly force balance needs external
 pressure and other loaded surfaces as well.

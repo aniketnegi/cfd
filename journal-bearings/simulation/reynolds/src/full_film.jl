@@ -1,6 +1,8 @@
-# Signed full-film Reynolds flow on a supplied periodic tensor grid.
+# Signed full-film Reynolds flow on supplied tensor or fitted land meshes.
 # Load bearing.jl and mesh/2d/grid.jl before this file. All calculations use SI.
 using LinearAlgebra, SparseArrays
+include(joinpath(@__DIR__,"face_fluxes.jl"))
+include(joinpath(@__DIR__,"fitted_full_film.jl"))
 
 function film_radii(p::BearingParameters, z_m::Real)
     z_mm = z_m * 1e3
@@ -14,6 +16,16 @@ function normal_film_gap(p::BearingParameters, theta::Real, z_m::Real)
     radial_gap = clearance - eccentricity*cos(theta) +
         transverse^2 / (radius + sqrt(radius^2 - transverse^2))
     return radial_gap * cosd(p.semicone_angle_deg)
+end
+
+# A positive correction opens the nominal gap. This is fixed-reference,
+# small-displacement feedback; it does not move the mesh or change wall speed.
+function corrected_normal_gap(p,theta,z,angle,correction)
+    h=normal_film_gap(p,theta-angle,z)
+    isnothing(correction) && return h
+    h+=Float64(correction(theta,z))
+    isfinite(h) && h>0 || throw(ArgumentError("elastic correction gives a nonpositive or nonfinite film gap"))
+    return h
 end
 
 function full_film_axes(grid)
@@ -50,27 +62,36 @@ end
 
 """
     assemble_full_film(grid; rpm, viscosity_pa_s,
-                       end_pressure_pa=(0., 0.), eccentricity_angle_rad=0.)
+                       end_pressure_pa=(0., 0.), eccentricity_angle_rad=0.,
+                       feed_pressure_pa=nothing, gap_correction_m=nothing)
 
-Conservative cell-centred Reynolds operator on a supplied `housing_grid` mesh.
-Uniform and adjusted tensor spacing use the same assembly; zero cone angle is
-cylindrical. Pressures are Pa in one reference, ordered (z=0, z=L). No cavitation
-or feed is imposed. Returns `A*p=b` and the face coefficients for flux checks.
+Conservative cell-centred Reynolds operator on a supplied housing or fitted land
+mesh. A fitted mesh requires an explicit pressure at its inlet rim; an unported
+mesh rejects that keyword. End pressures are Pa ordered (z=0,z=L). No cavitation
+is imposed. Optional gap_correction_m(theta,z_m) adds a normal displacement
+in metres at fixed reference coordinates; closed gaps are rejected. Returns
+`A*p=b` and an oriented face operator for flux checks.
 """
 function assemble_full_film(grid; rpm::Real, viscosity_pa_s::Real,
-        end_pressure_pa::Tuple{Real,Real}=(0.,0.), eccentricity_angle_rad::Real=0.)
+        end_pressure_pa::Tuple{Real,Real}=(0.,0.), eccentricity_angle_rad::Real=0.,
+        feed_pressure_pa::Union{Nothing,Real}=nothing,gap_correction_m=nothing)
     speed, mu, angle = Float64.((rpm, viscosity_pa_s, eccentricity_angle_rad))
     ends = Float64.(end_pressure_pa)
     isfinite(speed) || throw(ArgumentError("rpm must be finite"))
     isfinite(mu) && mu > 0 || throw(ArgumentError("viscosity must be finite and positive"))
     isfinite(angle) || throw(ArgumentError("eccentricity angle must be finite"))
     all(isfinite, ends) || throw(ArgumentError("end pressures must be finite"))
+    if hasproperty(grid,:feed_edges)
+        return assemble_fitted_full_film(grid;rpm=speed,viscosity_pa_s=mu,
+            end_pressure_pa=ends,eccentricity_angle_rad=angle,feed_pressure_pa,gap_correction_m)
+    end
+    isnothing(feed_pressure_pa) || throw(ArgumentError("feed pressure requires a fitted inlet mesh"))
     axes = full_film_axes(grid)
     p = grid.parameters
     nt, nz = grid.n_theta, grid.n_axial
     ca = cosd(p.semicone_angle_deg)
     omega = speed * 2pi / 60
-    gap(theta,z) = normal_film_gap(p, theta-angle, z)
+    gap(theta,z) = corrected_normal_gap(p,theta,z,angle,gap_correction_m)
     rows, columns, values = Int[], Int[], Float64[]
     add(row,column,value) = (push!(rows,row); push!(columns,column); push!(values,value))
     id(i,j) = i + nt*(j-1)
@@ -122,17 +143,19 @@ function assemble_full_film(grid; rpm::Real, viscosity_pa_s::Real,
     normal_gap_m = vec(hcell)
     # Unannotated housing_grid gaps have their offset along +X.
     gap_angle = get(grid, :eccentricity_angle_rad, 0.)
-    result_grid = angle == gap_angle ? grid :
+    result_grid = angle == gap_angle && isnothing(gap_correction_m) ? grid :
         (; grid..., radial_gaps=normal_gap_m .* (1e3/ca), eccentricity_angle_rad=angle)
+    faces = tensor_face_operator(gt,gz,adv,ends)
     return (; A=sparse(rows,columns,values,nt*nz,nt*nz), b, grid=result_grid, axes,
-        normal_gap_m, gt, adv, gz, end_pressure_pa=ends,
+        normal_gap_m, gt, adv, gz, faces, end_pressure_pa=ends,
         eccentricity_angle_rad=angle)
 end
 
-"""Shared oriented face flows. Theta faces point towards increasing theta;
-axial faces point towards +z, including the two prescribed-pressure boundaries.
+"""Shared oriented face flows on either layout. The tensor qt/qz view retains
+increasing-theta/+z orientations; the common face vector points out of its owner.
 """
 function full_film_fluxes(a, pressure_pa)
+    hasproperty(a,:gt) || return full_film_face_fluxes(a,pressure_pa)
     nt, nz = size(a.gt)
     length(pressure_pa) == nt*nz || throw(ArgumentError("pressure size does not match mesh"))
     pressure = reshape(pressure_pa,nt,nz)
@@ -146,7 +169,10 @@ function full_film_fluxes(a, pressure_pa)
         qz[i,j] = a.gz[i,j]*(left-right)
     end
     balance = [qt[i,j]-qt[mod1(i-1,nt),j]+qz[i,j+1]-qz[i,j] for i in 1:nt,j in 1:nz]
-    return (; qt, qz, balance=vec(balance))
+    face_flow = [vec(qt);vec(qz)]
+    face_flow[nt*nz+1:nt*nz+nt] .*= -1
+    return (; qt, qz, balance=vec(balance),face_flow,
+        boundary_outflow=boundary_outflows(a.faces,face_flow))
 end
 
 # Piecewise-constant pressure; exact oriented cone area for each tensor cell.
@@ -171,12 +197,14 @@ end
 this is not a journal-force or load-equilibrium calculation.
 """
 function housing_pressure_force(grid, pressure_pa)
+    hasproperty(grid,:feed_edges) && return fitted_pressure_force(grid,pressure_pa)
     axes = full_film_axes(grid)
     return tensor_pressure_force(grid.parameters,pressure_pa,axes.theta_edges,axes.z_edges)
 end
 
-"""Solve signed full-film Reynolds on a supplied unported cylindrical/conical
-mesh. Negative pressures are retained. The supplied mesh is not replaced;
+"""Solve signed full-film Reynolds on a supplied cylindrical/conical mesh.
+Fitted land meshes require an explicit rim pressure. Negative pressures are
+retained. The supplied housing vertices and connectivity are not replaced;
 no file IO occurs.
 """
 function solve_full_film(grid; kwargs...)
@@ -184,10 +212,16 @@ function solve_full_film(grid; kwargs...)
     pressure_pa = a.A \ a.b
     all(isfinite, pressure_pa) || error("nonfinite full-film pressure solution")
     flux = full_film_fluxes(a,pressure_pa)
-    outward = (-sum(flux.qz[:,1]), sum(flux.qz[:,end]))
-    boundary_scale = sum(abs,flux.qz[:,1]) + sum(abs,flux.qz[:,end])
-    flux_scale = sum(abs,flux.qt) + sum(abs,flux.qz)
-    advective_scale = sum(abs,a.adv)
+    tensor = hasproperty(a,:gt)
+    outward = tensor ? (-sum(flux.qz[:,1]), sum(flux.qz[:,end])) :
+        (flux.boundary_outflow.large,flux.boundary_outflow.small)
+    boundary_scale = tensor ? sum(abs,flux.qz[:,1])+sum(abs,flux.qz[:,end]) :
+        sum(abs,flux.face_flow[a.faces.neighbour .== 0])
+    end_scale = tensor ? boundary_scale :
+        sum(abs,flux.face_flow[a.faces.boundary .== :large])+sum(abs,flux.face_flow[a.faces.boundary .== :small])
+    flux_scale = tensor ? sum(abs,flux.qt)+sum(abs,flux.qz) : sum(abs,flux.face_flow)
+    advective_scale = tensor ? sum(abs,a.adv) : sum(abs,a.faces.advective)
+    net_boundary_flow = tensor ? sum(outward) : sum(values(flux.boundary_outflow))
     ratio(value,scale) = iszero(scale) ? (iszero(value) ? 0. : Inf) : value/scale
     max_imbalance = maximum(abs,flux.balance)
     residual = a.A*pressure_pa-a.b
@@ -197,15 +231,15 @@ function solve_full_film(grid; kwargs...)
         max_cell_imbalance_m3_s=max_imbalance,
         relative_l1_cell_imbalance=ratio(sum(abs,flux.balance),flux_scale),
         relative_max_cell_imbalance=ratio(max_imbalance,flux_scale/cells),
-        outward_end_flow_m3_s=outward, absolute_end_flow_m3_s=boundary_scale,
-        relative_global_imbalance=ratio(abs(sum(outward)),boundary_scale),
+        outward_end_flow_m3_s=outward, absolute_end_flow_m3_s=end_scale,
+        relative_global_imbalance=ratio(abs(net_boundary_flow),boundary_scale),
         minimum_normal_gap_m=minimum(a.normal_gap_m),
         max_cell_residual_m3_s=norm(residual,Inf), l1_cell_residual_m3_s=norm(residual,1),
         relative_max_cell_residual=norm(residual,Inf)/max(advective_scale/cells,eps()),
         relative_l1_residual=norm(residual,1)/max(advective_scale,eps()),
-        outward_side_flow_m3_s=sum(outward), absolute_side_flow_m3_s=boundary_scale)
-    return (; grid=a.grid, pressure_pa, normal_gap_m=a.normal_gap_m,
-        circumferential_face_flow_m3_s=flux.qt, axial_face_flow_m3_s=flux.qz,
-        housing_pressure_force_n=tensor_pressure_force(grid.parameters,pressure_pa,
-            a.axes.theta_edges,a.axes.z_edges), diagnostics)
+        outward_side_flow_m3_s=sum(outward), absolute_side_flow_m3_s=end_scale)
+    tensor_flows = tensor ? (;circumferential_face_flow_m3_s=flux.qt,axial_face_flow_m3_s=flux.qz) : (;)
+    return (; grid=a.grid, pressure_pa, normal_gap_m=a.normal_gap_m, tensor_flows...,
+        face_flow_m3_s=flux.face_flow,boundary_outflow_m3_s=flux.boundary_outflow,
+        housing_pressure_force_n=housing_pressure_force(a.grid,pressure_pa), diagnostics)
 end
